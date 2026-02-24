@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu } from 'obsidian';
 import PortalsPlugin from './main';
-import Sortable from 'sortablejs';
+import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
 
 export const VIEW_TYPE_PORTALS = 'portals-view';
@@ -71,7 +71,8 @@ export class PortalsView extends ItemView {
 
                 if (space.icon) {
                     const iconSpan = tab.createSpan({ cls: 'portals-tab-icon' });
-                    iconSpan.setAttribute('data-lucide', space.icon);
+                    // Create <i> element for Phosphor icon
+                    iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
                 }
 
                 let displayName = space.path;
@@ -93,7 +94,7 @@ export class PortalsView extends ItemView {
             // Make tabs sortable
             new Sortable(tabBar, {
                 animation: 150,
-                onEnd: async (evt) => {
+                onEnd: async (evt: SortableEvent) => {
                     const newOrder: SpaceConfig[] = [];
                     const tabElements = tabBar.querySelectorAll('.portals-tab');
                     tabElements.forEach(el => {
@@ -132,8 +133,6 @@ export class PortalsView extends ItemView {
                 }
             }
 
-            this.loadLucideIcons();
-
         } catch (e) {
             console.error('Portals render error:', e);
         }
@@ -165,11 +164,8 @@ export class PortalsView extends ItemView {
             spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
             this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
         }
-
-        this.loadLucideIcons();
     }
 
-    // Build a flat list of files containing a given tag
     private buildTagSpace(tagName: string, container: HTMLElement, iconName: string) {
         const tag = '#' + tagName;
         const allFiles = this.app.vault.getMarkdownFiles();
@@ -177,8 +173,6 @@ export class PortalsView extends ItemView {
             const cache = this.app.metadataCache.getFileCache(file);
             return cache?.tags?.some(t => t.tag === tag) || cache?.frontmatter?.tags?.includes(tagName);
         });
-
-        console.log(`Tag space "${tagName}": found ${taggedFiles.length} files`); // Debug
 
         if (taggedFiles.length === 0) {
             container.createEl('p', { text: 'No files with this tag.' });
@@ -188,7 +182,8 @@ export class PortalsView extends ItemView {
         for (const file of taggedFiles) {
             const fileEl = container.createDiv({ cls: 'file-item' });
             const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
-            fileIcon.setAttribute('data-lucide', 'file');
+            // File icon
+            fileIcon.createEl('i', { cls: 'ph ph-file' });
             fileEl.createSpan({ text: file.name });
 
             fileEl.draggable = true;
@@ -349,7 +344,8 @@ export class PortalsView extends ItemView {
         summary.addClass('folder-summary');
 
         const iconSpan = summary.createSpan({ cls: 'folder-icon' });
-        iconSpan.setAttribute('data-lucide', iconName);
+        // Folder icon
+        iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
 
         summary.createSpan({ text: folder.name });
 
@@ -379,7 +375,7 @@ export class PortalsView extends ItemView {
             } else if (child instanceof TFile) {
                 const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                 const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
-                fileIcon.setAttribute('data-lucide', 'file');
+                fileIcon.createEl('i', { cls: 'ph ph-file' });
                 fileEl.createSpan({ text: child.name });
 
                 fileEl.draggable = true;
@@ -415,16 +411,5 @@ export class PortalsView extends ItemView {
             this.plugin.settings.openFolders = openFolders;
             await this.plugin.saveSettings();
         });
-    }
-
-    loadLucideIcons() {
-        if ((window as any).lucide) {
-            (window as any).lucide.createIcons();
-        } else {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/lucide@latest';
-            script.onload = () => (window as any).lucide.createIcons();
-            document.head.appendChild(script);
-        }
     }
 }

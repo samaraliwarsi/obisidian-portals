@@ -38,10 +38,9 @@ const context = await esbuild.context({
     outfile: "main.js",
     plugins: [
         copy({
-            assets: {
-                from: ["src/styles.css"],
-                to: ["styles.css"],
-            },
+            assets: [
+                { from: ["src/styles.css"], to: ["styles.css"] }
+            ]
         }),
     ],
 });
