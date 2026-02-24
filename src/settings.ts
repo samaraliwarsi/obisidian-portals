@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, TFolder } from 'obsidian';
+import { App, PluginSettingTab, Setting, TFolder, Notice } from 'obsidian';
 import PortalsPlugin from './main';
 import { IconPickerModal } from './iconPicker';
 
@@ -15,6 +15,7 @@ export interface SpacesSettings {
     selectedSpace: string | null;
     showSubfolders: boolean;
     showTags: boolean;
+    replaceFileExplorer: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -22,7 +23,8 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     openFolders: [],
     selectedSpace: null,
     showSubfolders: true,
-    showTags: true
+    showTags: true,
+    replaceFileExplorer: false
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -38,6 +40,18 @@ export class SpacesSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         containerEl.createEl('h2', { text: 'Portals Settings' });
+
+        // --- Replace file explorer toggle ---
+        new Setting(containerEl)
+            .setName('Replace file explorer in left sidebar')
+            .setDesc('When enabled, the Portals pane will take the place of the default file explorer in the left sidebar on startup. The file explorer can still be opened via commands if needed.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.replaceFileExplorer)
+                .onChange(async (value) => {
+                    this.plugin.settings.replaceFileExplorer = value;
+                    await this.plugin.saveSettings();
+                    new Notice('Changes will take effect after restarting Obsidian.');
+                }));
 
         // ========== FOLDERS SECTION ==========
         containerEl.createEl('h3', { text: 'Folders' });
@@ -58,7 +72,6 @@ export class SpacesSettingTab extends PluginSettingTab {
         const folders: TFolder[] = [];
 
         if (this.plugin.settings.showSubfolders) {
-            // Recursively collect all folders
             const walk = (f: TFolder) => {
                 folders.push(f);
                 for (const child of f.children) {
@@ -69,7 +82,6 @@ export class SpacesSettingTab extends PluginSettingTab {
             };
             walk(root);
         } else {
-            // Only top-level folders (direct children of root)
             for (const child of root.children) {
                 if (child instanceof TFolder) {
                     folders.push(child);
