@@ -1,0 +1,123 @@
+.portals-container {
+    padding: 10px;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.portals-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 6px;
+}
+
+.portals-tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.1s;
+    border: 1px solid transparent;
+}
+
+.portals-tab:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.portals-tab.is-active {
+    border-color: var(--interactive-accent);
+    background-color: var(--background-modifier-hover);
+}
+
+.portals-tab-icon, .folder-icon, .file-icon {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.portals-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.portals-space-content {
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.portal-error {
+    color: var(--text-error);
+    padding: 4px 8px;
+    background-color: var(--background-modifier-error);
+    border-radius: 4px;
+}
+
+.folder-details {
+    margin-left: 0;
+}
+
+.folder-details[open] > .folder-summary {
+    margin-bottom: 4px;
+}
+
+.folder-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    list-style: none;
+    padding: 4px 0;
+}
+
+.folder-summary::-webkit-details-marker {
+    display: none;
+}
+
+.folder-summary::before {
+    content: '▶';
+    display: inline-block;
+    width: 1em;
+    font-size: 0.8em;
+    transition: transform 0.2s;
+}
+
+details[open] > .folder-summary::before {
+    transform: rotate(90deg);
+}
+
+.folder-children {
+    margin-left: 24px;
+    padding-left: 8px;
+    border-left: 1px dashed var(--background-modifier-border);
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.file-item:hover {
+    background-color: var(--background-modifier-hover);
+
+.portals-tab {
+    user-select: none;
+    -webkit-user-select: none;
+}
+.drag-over {
+    background-color: var(--interactive-accent) !important;
+    opacity: 0.7;
+}
+
+}
