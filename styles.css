@@ -4635,6 +4635,7 @@
 .portals-tab-bar {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 4px;
     margin-bottom: 12px;
     border-bottom: 1px solid var(--background-modifier-border);
@@ -4646,22 +4647,26 @@
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
-    transition: background-color 0.1s;
-    border: 1px solid transparent;
+    transition: background-color 0.1s, opacity 0.1s;
+    border: none;
     user-select: none;
     -webkit-user-select: none;
+    opacity: 0.4;
+    border-bottom: 2px solid transparent;
 }
 
 .portals-tab:hover {
     background-color: var(--background-modifier-hover);
+    opacity: 1;
 }
 
 .portals-tab.is-active {
-    border-color: var(--interactive-accent);
-    background-color: var(--background-modifier-hover);
+    opacity: 1;
+    background-color: transparent;
+    border-bottom: 2px solid var(--interactive-accent);
 }
 
 .portals-tab-icon,
