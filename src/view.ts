@@ -33,7 +33,7 @@ export class PortalsView extends ItemView {
     private getSettingsHash(): string {
         const s = this.plugin.settings;
         return JSON.stringify({
-            spaces: s.spaces.map(sp => `${sp.path}|${sp.icon}|${sp.color}`).join(','),
+            spaces: s.spaces.map(sp => `${sp.type}:${sp.path}|${sp.icon}|${sp.color}`).join(','),
             openFolders: s.openFolders.join(','),
             selectedSpace: s.selectedSpace
         });
@@ -67,15 +67,21 @@ export class PortalsView extends ItemView {
                 }
                 tab.style.backgroundColor = space.color || 'transparent';
                 tab.dataset.path = space.path;
+                tab.dataset.type = space.type;
 
                 if (space.icon) {
                     const iconSpan = tab.createSpan({ cls: 'portals-tab-icon' });
                     iconSpan.setAttribute('data-lucide', space.icon);
                 }
 
-                const folder = this.app.vault.getAbstractFileByPath(space.path);
-                const name = folder instanceof TFolder ? folder.name : space.path.split('/').pop() || space.path;
-                tab.createSpan({ text: name });
+                let displayName = space.path;
+                if (space.type === 'folder') {
+                    const folder = this.app.vault.getAbstractFileByPath(space.path);
+                    displayName = folder instanceof TFolder ? folder.name : space.path;
+                } else {
+                    displayName = '#' + space.path;
+                }
+                tab.createSpan({ text: displayName });
 
                 tab.addEventListener('click', async () => {
                     this.plugin.settings.selectedSpace = space.path;
@@ -92,8 +98,9 @@ export class PortalsView extends ItemView {
                     const tabElements = tabBar.querySelectorAll('.portals-tab');
                     tabElements.forEach(el => {
                         const path = (el as HTMLElement).dataset.path;
-                        if (path) {
-                            const found = this.plugin.settings.spaces.find(s => s.path === path);
+                        const type = (el as HTMLElement).dataset.type as 'folder' | 'tag';
+                        if (path && type) {
+                            const found = this.plugin.settings.spaces.find(s => s.path === path && s.type === type);
                             if (found) newOrder.push(found);
                         }
                     });
@@ -108,14 +115,20 @@ export class PortalsView extends ItemView {
 
             const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
             if (selectedSpace) {
-                const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
-                if (folder && folder instanceof TFolder) {
+                if (selectedSpace.type === 'folder') {
+                    const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+                    if (folder && folder instanceof TFolder) {
+                        const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
+                        spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
+                        this.makeDropTarget(spaceContent, folder);
+                        this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
+                    } else {
+                        contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
+                    }
+                } else { // tag space
                     const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
                     spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
-                    this.makeDropTarget(spaceContent, folder);
-                    this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
-                } else {
-                    contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
+                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
                 }
             }
 
@@ -137,17 +150,65 @@ export class PortalsView extends ItemView {
         const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
         if (!selectedSpace) return;
 
-        const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
-        if (folder && folder instanceof TFolder) {
+        if (selectedSpace.type === 'folder') {
+            const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+            if (folder && folder instanceof TFolder) {
+                const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
+                spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
+                this.makeDropTarget(spaceContent, folder);
+                this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
+            } else {
+                contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
+            }
+        } else {
             const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
             spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
-            this.makeDropTarget(spaceContent, folder);
-            this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
-        } else {
-            contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
+            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
         }
 
         this.loadLucideIcons();
+    }
+
+    // Build a flat list of files containing a given tag
+    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string) {
+        const tag = '#' + tagName;
+        const allFiles = this.app.vault.getMarkdownFiles();
+        const taggedFiles = allFiles.filter(file => {
+            const cache = this.app.metadataCache.getFileCache(file);
+            return cache?.tags?.some(t => t.tag === tag) || cache?.frontmatter?.tags?.includes(tagName);
+        });
+
+        console.log(`Tag space "${tagName}": found ${taggedFiles.length} files`); // Debug
+
+        if (taggedFiles.length === 0) {
+            container.createEl('p', { text: 'No files with this tag.' });
+            return;
+        }
+
+        for (const file of taggedFiles) {
+            const fileEl = container.createDiv({ cls: 'file-item' });
+            const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
+            fileIcon.setAttribute('data-lucide', 'file');
+            fileEl.createSpan({ text: file.name });
+
+            fileEl.draggable = true;
+            fileEl.addEventListener('dragstart', (e) => {
+                e.dataTransfer?.setData('text/plain', file.path);
+            });
+
+            fileEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.app.workspace.getLeaf().openFile(file);
+            });
+
+            fileEl.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const menu = new Menu();
+                this.app.workspace.trigger('file-menu', menu, file, 'file-explorer');
+                this.addCoreFileMenuItems(menu, file);
+                menu.showAtPosition({ x: e.clientX, y: e.clientY });
+            });
+        }
     }
 
     private makeDropTarget(el: HTMLElement, folder: TFolder) {
@@ -179,13 +240,11 @@ export class PortalsView extends ItemView {
     }
 
     private addCoreFileMenuItems(menu: Menu, file: TFile | TFolder) {
-        // Helper to execute commands safely
         const exec = (commandId: string) => {
             (this.app as any).commands.executeCommandById(commandId);
         };
 
         if (file instanceof TFile) {
-            // File items
             menu.addItem(item => item
                 .setTitle('Open in new tab')
                 .setIcon('document')
@@ -196,7 +255,6 @@ export class PortalsView extends ItemView {
                 .setTitle('Open to the right')
                 .setIcon('file-symlink')
                 .onClick(() => {
-                    // Split the current leaf and open
                     this.app.workspace.getLeaf('split', 'vertical').openFile(file);
                 }));
             menu.addSeparator();
@@ -226,7 +284,6 @@ export class PortalsView extends ItemView {
                     exec('file-explorer:delete-file');
                 }));
         } else if (file instanceof TFolder) {
-            // Folder items
             menu.addItem(item => item
                 .setTitle('New note')
                 .setIcon('document')
@@ -243,7 +300,6 @@ export class PortalsView extends ItemView {
                 .setTitle('New canvas')
                 .setIcon('layout-dashboard')
                 .onClick(() => {
-                    // Canvas command? Use generic new canvas command
                     exec('canvas:new-canvas');
                 }));
             menu.addSeparator();
@@ -297,16 +353,12 @@ export class PortalsView extends ItemView {
 
         summary.createSpan({ text: folder.name });
 
-        // Make folder a drop target
         this.makeDropTarget(summary, folder);
 
-        // Right-click on folder with full context menu
         summary.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             const menu = new Menu();
-            // Let plugins add items
             this.app.workspace.trigger('file-menu', menu, folder, 'file-explorer');
-            // Add core items (will be appended; duplicates may occur but unlikely)
             this.addCoreFileMenuItems(menu, folder);
             menu.showAtPosition({ x: e.clientX, y: e.clientY });
         });
@@ -330,19 +382,16 @@ export class PortalsView extends ItemView {
                 fileIcon.setAttribute('data-lucide', 'file');
                 fileEl.createSpan({ text: child.name });
 
-                // Make file draggable
                 fileEl.draggable = true;
                 fileEl.addEventListener('dragstart', (e) => {
                     e.dataTransfer?.setData('text/plain', child.path);
                 });
 
-                // Left-click to open
                 fileEl.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.app.workspace.getLeaf().openFile(child);
                 });
 
-                // Right-click with full context menu
                 fileEl.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     const menu = new Menu();

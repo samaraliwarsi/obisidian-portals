@@ -7,7 +7,6 @@ export default class PortalsPlugin extends Plugin {
 
     async onload() {
         await this.loadSettings();
-		console.log('Portals settings loaded:', this.settings);
 
         this.registerView(
             VIEW_TYPE_PORTALS,
@@ -24,7 +23,16 @@ export default class PortalsPlugin extends Plugin {
     async onunload() { }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        // Migrate old spaces (pre-type) to have type 'folder'
+        if (this.settings.spaces) {
+            this.settings.spaces.forEach(space => {
+                if (!space.type) {
+                    space.type = 'folder';
+                }
+            });
+        }
     }
 
     async saveSettings() {

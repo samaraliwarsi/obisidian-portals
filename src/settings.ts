@@ -4,6 +4,7 @@ import { IconPickerModal } from './iconPicker';
 
 export interface SpaceConfig {
     path: string;
+    type: 'folder' | 'tag';
     icon: string;
     color: string;
 }
@@ -11,13 +12,17 @@ export interface SpaceConfig {
 export interface SpacesSettings {
     spaces: SpaceConfig[];
     openFolders: string[];
-    selectedSpace: string | null;  // path of the currently active space
+    selectedSpace: string | null;
+    showSubfolders: boolean;
+    showTags: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
     spaces: [],
     openFolders: [],
-    selectedSpace: null
+    selectedSpace: null,
+    showSubfolders: true,
+    showTags: true
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -34,43 +39,67 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         containerEl.createEl('h2', { text: 'Portals Settings' });
 
-        // Get all folders in the vault
+        // ========== FOLDERS SECTION ==========
+        containerEl.createEl('h3', { text: 'Folders' });
+
+        new Setting(containerEl)
+            .setName('Show subfolders')
+            .setDesc('Include subfolders in the list below.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showSubfolders)
+                .onChange(async (value) => {
+                    this.plugin.settings.showSubfolders = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        // Collect folders
+        const root = this.app.vault.getRoot();
         const folders: TFolder[] = [];
-        const walkFolders = (folder: TFolder) => {
-            folders.push(folder);
-            for (const child of folder.children) {
+
+        if (this.plugin.settings.showSubfolders) {
+            // Recursively collect all folders
+            const walk = (f: TFolder) => {
+                folders.push(f);
+                for (const child of f.children) {
+                    if (child instanceof TFolder) {
+                        walk(child);
+                    }
+                }
+            };
+            walk(root);
+        } else {
+            // Only top-level folders (direct children of root)
+            for (const child of root.children) {
                 if (child instanceof TFolder) {
-                    walkFolders(child);
+                    folders.push(child);
                 }
             }
-        };
-        const root = this.app.vault.getRoot();
-        walkFolders(root);
+        }
 
-        containerEl.createEl('h3', { text: 'Pinned Portals' });
+        folders.sort((a, b) => a.name.localeCompare(b.name));
 
         for (const folder of folders) {
             const path = folder.path;
-            const existing = this.plugin.settings.spaces.find(s => s.path === path);
+            const existing = this.plugin.settings.spaces.find(s => s.type === 'folder' && s.path === path);
 
             const setting = new Setting(containerEl)
                 .setName(folder.name)
-                .setDesc(path)
+                .setDesc(path || '/')
                 .addToggle(toggle => {
                     toggle.setValue(!!existing).onChange(async (value) => {
                         if (value) {
                             this.plugin.settings.spaces.push({
                                 path,
+                                type: 'folder',
                                 icon: 'folder',
                                 color: 'transparent'
                             });
-                            // If this is the first space, select it automatically
                             if (this.plugin.settings.spaces.length === 1) {
                                 this.plugin.settings.selectedSpace = path;
                             }
                         } else {
-                            this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => s.path !== path);
-                            // If the removed space was selected, clear selection or pick first available
+                            this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => !(s.type === 'folder' && s.path === path));
                             if (this.plugin.settings.selectedSpace === path) {
                                 this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0]?.path || null;
                             }
@@ -81,34 +110,105 @@ export class SpacesSettingTab extends PluginSettingTab {
                 });
 
             if (existing) {
-                // Icon picker button
-                setting.addButton(btn => {
-                    btn.setButtonText('Choose icon')
-                       .onClick(() => {
-                            new IconPickerModal(this.app, (iconName) => {
-                                existing.icon = iconName;
-                                this.plugin.saveSettings();
-                                this.display();
-                            }).open();
-                        });
-                });
-
-                // Show current icon name
-                setting.descEl.createEl('span', {
-                    text: `Current: ${existing.icon}`,
-                    cls: 'mod-cta'
-                });
-
-                // Color picker
-                setting.addText(text => {
-                    text.setPlaceholder('Color (e.g. #ff0000)')
-                        .setValue(existing.color)
-                        .onChange(async (value) => {
-                            existing.color = value;
-                            await this.plugin.saveSettings();
-                        });
-                });
+                this.addSpaceControls(setting, existing);
             }
         }
+
+        // ========== TAGS SECTION ==========
+        containerEl.createEl('h3', { text: 'Tags' });
+
+        new Setting(containerEl)
+            .setName('Show tags')
+            .setDesc('Include tags in the list below.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showTags)
+                .onChange(async (value) => {
+                    this.plugin.settings.showTags = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        if (this.plugin.settings.showTags) {
+            const tags = (this.app.metadataCache as any).getTags();
+            const tagNames = Object.keys(tags).sort();
+
+            for (const tag of tagNames) {
+                const tagName = tag.slice(1);
+                const existing = this.plugin.settings.spaces.find(s => s.type === 'tag' && s.path === tagName);
+
+                const setting = new Setting(containerEl)
+                    .setName(tag)
+                    .setDesc(`${tags[tag]} files`)
+                    .addToggle(toggle => {
+                        toggle.setValue(!!existing).onChange(async (value) => {
+                            if (value) {
+                                this.plugin.settings.spaces.push({
+                                    path: tagName,
+                                    type: 'tag',
+                                    icon: 'tag',
+                                    color: 'transparent'
+                                });
+                                if (this.plugin.settings.spaces.length === 1) {
+                                    this.plugin.settings.selectedSpace = tagName;
+                                }
+                            } else {
+                                this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => !(s.type === 'tag' && s.path === tagName));
+                                if (this.plugin.settings.selectedSpace === tagName) {
+                                    this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0]?.path || null;
+                                }
+                            }
+                            await this.plugin.saveSettings();
+                            this.display();
+                        });
+                    });
+
+                if (existing) {
+                    this.addSpaceControls(setting, existing);
+                }
+            }
+        }
+    }
+
+    private addSpaceControls(setting: Setting, space: SpaceConfig) {
+        setting.addButton(btn => {
+            btn.setButtonText('Choose icon')
+               .onClick(() => {
+                    new IconPickerModal(this.app, (iconName) => {
+                        space.icon = iconName;
+                        this.plugin.saveSettings();
+                        this.display();
+                    }).open();
+                });
+        });
+
+        setting.descEl.createEl('span', {
+            text: `Current: ${space.icon}`,
+            cls: 'mod-cta'
+        });
+
+        const colorWrapper = setting.controlEl.createDiv({ cls: 'portals-color-wrapper' });
+        colorWrapper.style.display = 'flex';
+        colorWrapper.style.alignItems = 'center';
+        colorWrapper.style.gap = '8px';
+
+        const colorInput = colorWrapper.createEl('input', {
+            type: 'text',
+            placeholder: '#ff0000 or rgba(255,0,0,0.5)',
+            value: space.color
+        });
+        colorInput.style.flex = '1';
+
+        const preview = colorWrapper.createEl('span', { cls: 'portals-color-preview' });
+        preview.style.width = '24px';
+        preview.style.height = '24px';
+        preview.style.borderRadius = '4px';
+        preview.style.border = '1px solid var(--background-modifier-border)';
+        preview.style.backgroundColor = space.color;
+
+        colorInput.addEventListener('input', async () => {
+            space.color = colorInput.value;
+            preview.style.backgroundColor = space.color;
+            await this.plugin.saveSettings();
+        });
     }
 }
