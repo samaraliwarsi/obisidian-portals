@@ -8,6 +8,8 @@ export const VIEW_TYPE_PORTALS = 'portals-view';
 export class PortalsView extends ItemView {
     plugin: PortalsPlugin;
     private lastRenderHash: string = '';
+    private tooltipEl: HTMLElement | null = null;
+    private tooltipTimeout: number | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -28,6 +30,54 @@ export class PortalsView extends ItemView {
 
     async onOpen() {
         this.render();
+    }
+
+    async onClose() {
+        if (this.tooltipEl) {
+            this.tooltipEl.remove();
+            this.tooltipEl = null;
+        }
+        if (this.tooltipTimeout) {
+            window.clearTimeout(this.tooltipTimeout);
+            this.tooltipTimeout = null;
+        }
+    }
+
+    private getTooltipEl(): HTMLElement {
+        if (!this.tooltipEl) {
+            this.tooltipEl = document.body.createDiv({ cls: 'portals-floating-tooltip' });
+        }
+        return this.tooltipEl;
+    }
+
+    private showTooltip(text: string, target: HTMLElement) {
+        const tooltip = this.getTooltipEl();
+        tooltip.setText(text);
+
+        const rect = target.getBoundingClientRect();
+        tooltip.style.top = (rect.bottom + 6) + 'px';
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.transform = 'translateX(-50%)';
+        tooltip.style.display = 'block';
+
+        if (this.tooltipTimeout) {
+            window.clearTimeout(this.tooltipTimeout);
+            this.tooltipTimeout = null;
+        }
+    }
+
+    private hideTooltip(delay = 0) {
+        if (delay > 0) {
+            this.tooltipTimeout = window.setTimeout(() => {
+                if (this.tooltipEl) {
+                    this.tooltipEl.style.display = 'none';
+                }
+            }, delay);
+        } else {
+            if (this.tooltipEl) {
+                this.tooltipEl.style.display = 'none';
+            }
+        }
     }
 
     private getSettingsHash(): string {
@@ -61,19 +111,6 @@ export class PortalsView extends ItemView {
             const tabBar = container.createEl('div', { cls: 'portals-tab-bar' });
 
             for (const space of spaces) {
-                const tab = tabBar.createEl('div', { cls: 'portals-tab' });
-                if (space.path === this.plugin.settings.selectedSpace) {
-                    tab.addClass('is-active');
-                }
-                tab.style.backgroundColor = space.color || 'transparent';
-                tab.dataset.path = space.path;
-                tab.dataset.type = space.type;
-
-                if (space.icon) {
-                    const iconSpan = tab.createSpan({ cls: 'portals-tab-icon' });
-                    iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
-                }
-
                 let displayName = '';
                 if (space.type === 'folder') {
                     const folder = this.app.vault.getAbstractFileByPath(space.path);
@@ -82,10 +119,26 @@ export class PortalsView extends ItemView {
                     displayName = '#' + space.path;
                 }
 
+                const tab = tabBar.createEl('div', { cls: 'portals-tab' });
                 if (space.path === this.plugin.settings.selectedSpace) {
-                    tab.createSpan({ text: displayName });
+                    tab.addClass('is-active');
+                    tab.createSpan({ text: displayName }); // show name on active
                 } else {
-                    tab.title = displayName;
+                    // Use floating tooltip
+                    tab.addEventListener('mouseenter', () => {
+                        this.showTooltip(displayName, tab);
+                    });
+                    tab.addEventListener('mouseleave', () => {
+                        this.hideTooltip(100);
+                    });
+                }
+                tab.style.backgroundColor = space.color || 'transparent';
+                tab.dataset.path = space.path;
+                tab.dataset.type = space.type;
+
+                if (space.icon) {
+                    const iconSpan = tab.createSpan({ cls: 'portals-tab-icon' });
+                    iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
                 }
 
                 tab.addEventListener('click', async () => {

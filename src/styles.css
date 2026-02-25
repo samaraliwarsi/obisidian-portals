@@ -4626,11 +4626,31 @@
 
 /* ===== Your Plugin's Custom UI Styles ===== */
 .portals-container {
-    padding: 10px;
+    padding: 10px 10px 0 10px;
     height: 100%;
-    overflow-y: auto;
+    overflow-y: hidden;
     display: flex;
     flex-direction: column;
+}
+
+.portals-floating-tooltip {
+    position: fixed;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    opacity: 0;
+    display: none;
+}
+
+.portals-floating-tooltip[style*="display: block"] {
+    opacity: 1;
 }
 
 .portals-tab-bar {
@@ -4678,6 +4698,7 @@
     filter: grayscale(100%) opacity(0.4);
     border-bottom: 2px solid transparent;
     flex-shrink: 0;
+    position: relative;
 }
 
 .portals-tab:hover {
@@ -4717,6 +4738,25 @@
   }
 }
 
+/*Tooltip for inactive tabs*/
+.portals-tab[data-tooltip]:hover::after {
+   content: attr(data-tooltip);
+    position: absolute;
+    top: 100%;           /* below the tab */
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;     /* small gap */
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    pointer-events: none;
+}
+
 .portals-tab-icon,
 .folder-icon,
 .file-icon {
@@ -4730,11 +4770,24 @@
 .portals-content {
     flex: 1;
     overflow-y: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
 }
 
 .portals-space-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     border-radius: 6px;
-    padding: 8px;
+    padding: 8px 8px 0 8px;
+    margin: 0;
+}
+
+.portals-space-content > :last-child,
+.file-item:last-child,
+.folder-details:last-child {
+    margin-bottom: 0;
 }
 
 .portal-error {
@@ -4835,4 +4888,16 @@ details[open] > .folder-summary::before {
 .file-icon .ph {
     font-size: 18px;
     vertical-align: middle;
+}
+
+.portals-container {
+    padding-bottom: 0 !important;
+}
+.portals-content {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+.workspace-leaf-content {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
 }
