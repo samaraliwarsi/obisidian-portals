@@ -4677,12 +4677,12 @@
 /* Reduce font and icon size in file view */
 .file-item,
 .folder-summary {
-    font-size: 15px; /* adjust as needed */
+    font-size: 14px; /* adjust as needed */
 }
 
 .file-icon .ph,
 .folder-icon .ph {
-    font-size: 15px; /* smaller than default 18px */
+    font-size: 14px; /* smaller than default 18px */
 }
 
 /* Add space between file list items */

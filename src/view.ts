@@ -1,7 +1,49 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
+
+// Simple text input modal for rename
+class InputModal extends Modal {
+    constructor(
+        app: App,
+        private title: string,
+        private placeholder: string,
+        private defaultValue: string,
+        private onSubmit: (value: string) => void
+    ) {
+        super(app);
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: this.title });
+
+        const input = contentEl.createEl('input', {
+            type: 'text',
+            value: this.defaultValue,
+            placeholder: this.placeholder
+        });
+        input.style.width = '100%';
+        input.style.marginBottom = '1em';
+
+        const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
+        buttonDiv.createEl('button', { text: 'Cancel' }).addEventListener('click', () => this.close());
+        const submitBtn = buttonDiv.createEl('button', { text: 'Submit', cls: 'mod-cta' });
+        submitBtn.addEventListener('click', () => {
+            this.onSubmit(input.value);
+            this.close();
+        });
+
+        input.focus();
+        input.select();
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 
 export const VIEW_TYPE_PORTALS = 'portals-view';
 
@@ -10,6 +52,7 @@ export class PortalsView extends ItemView {
     private lastRenderHash: string = '';
     private tooltipEl: HTMLElement | null = null;
     private tooltipTimeout: number | null = null;
+    private vaultEventRef: (() => void) | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -30,6 +73,16 @@ export class PortalsView extends ItemView {
 
     async onOpen() {
         this.render();
+
+        const renameRef = this.app.vault.on('rename', () => this.renderContent());
+        const deleteRef = this.app.vault.on('delete', () => this.renderContent());
+        const createRef = this.app.vault.on('create', () => this.renderContent());
+
+        this.vaultEventRef = () => {
+            this.app.vault.offref(renameRef);
+            this.app.vault.offref(deleteRef);
+            this.app.vault.offref(createRef);
+        };
     }
 
     async onClose() {
@@ -40,6 +93,10 @@ export class PortalsView extends ItemView {
         if (this.tooltipTimeout) {
             window.clearTimeout(this.tooltipTimeout);
             this.tooltipTimeout = null;
+        }
+        if (this.vaultEventRef) {
+            this.vaultEventRef();
+            this.vaultEventRef = null;
         }
     }
 
@@ -234,7 +291,7 @@ export class PortalsView extends ItemView {
                     if (folder && folder instanceof TFolder) {
                         const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
                         this.applySpaceBackground(spaceContent, selectedSpace.color);
-                        this.makeDropTarget(spaceContent, folder);
+                        this.makeDropTarget(spaceContent, folder, true); // allow folder drops
                         this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
                     } else {
                         contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
@@ -279,7 +336,7 @@ export class PortalsView extends ItemView {
             if (folder && folder instanceof TFolder) {
                 const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
                 this.applySpaceBackground(spaceContent, selectedSpace.color);
-                this.makeDropTarget(spaceContent, folder);
+                this.makeDropTarget(spaceContent, folder, true);
                 this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
             } else {
                 contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
@@ -339,15 +396,251 @@ export class PortalsView extends ItemView {
 
             fileEl.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                const menu = new Menu();
-                this.app.workspace.trigger('file-menu', menu, file, 'file-explorer');
-                this.addCoreFileMenuItems(menu, file);
-                menu.showAtPosition({ x: e.clientX, y: e.clientY });
+                this.showFileContextMenu(e, file);
             });
         }
     }
 
-    private makeDropTarget(el: HTMLElement, folder: TFolder) {
+    // ========== CONTEXT MENU ==========
+
+    private showFileContextMenu(event: MouseEvent, file: TFile) {
+        const menu = new Menu();
+
+        // Manual items we keep
+        menu.addItem(item => item
+            .setTitle('Open in new tab')
+            .setIcon('document')
+            .onClick(() => this.app.workspace.getLeaf('tab').openFile(file)));
+
+        menu.addItem(item => item
+            .setTitle('Open to the right')
+            .setIcon('file-symlink')
+            .onClick(() => this.app.workspace.getLeaf('split', 'vertical').openFile(file)));
+
+        menu.addSeparator();
+
+        // Manual duplicate, rename, delete (proven to work)
+        menu.addItem(item => item
+            .setTitle('Duplicate')
+            .setIcon('copy')
+            .onClick(() => this.duplicateFile(file)));
+
+        menu.addItem(item => item
+            .setTitle('Rename')
+            .setIcon('pencil')
+            .onClick(() => this.renameFile(file)));
+
+        menu.addItem(item => item
+            .setTitle('Delete')
+            .setIcon('trash')
+            .onClick(() => this.deleteFile(file)));
+
+        menu.addSeparator();
+
+        // Let Obsidian add its default items (Move, Copy path, Reveal, Bookmark, etc.)
+        this.app.workspace.trigger('file-menu', menu, file, 'file-explorer');
+
+        menu.showAtPosition({ x: event.clientX, y: event.clientY });
+    }
+
+    private showFolderContextMenu(event: MouseEvent, folder: TFolder) {
+        const menu = new Menu();
+
+        // Manual items we keep
+        menu.addItem(item => item
+            .setTitle('New note')
+            .setIcon('document')
+            .onClick(() => this.newNoteInFolder(folder)));
+
+        menu.addItem(item => item
+            .setTitle('New folder')
+            .setIcon('folder')
+            .onClick(() => this.newFolderInFolder(folder)));
+
+        menu.addItem(item => item
+            .setTitle('New canvas')
+            .setIcon('layout-dashboard')
+            .onClick(() => this.newCanvasInFolder(folder)));
+
+        menu.addSeparator();
+
+        menu.addItem(item => item
+            .setTitle('Duplicate')
+            .setIcon('copy')
+            .onClick(() => this.executeCommand('file-explorer:copy-folder'))); // fallback to command
+
+        menu.addItem(item => item
+            .setTitle('Rename')
+            .setIcon('pencil')
+            .onClick(() => this.renameFolder(folder)));
+
+        menu.addItem(item => item
+            .setTitle('Delete')
+            .setIcon('trash')
+            .onClick(() => this.deleteFolder(folder)));
+
+        menu.addSeparator();
+
+        // Let Obsidian add its default items (Move, Copy path, etc.)
+        this.app.workspace.trigger('file-menu', menu, folder, 'file-explorer');
+
+        menu.showAtPosition({ x: event.clientX, y: event.clientY });
+    }
+
+    private executeCommand(commandId: string) {
+        try {
+            (this.app as any).commands.executeCommandById(commandId);
+        } catch (err) {
+            console.error(`Command failed: ${commandId}`, err);
+            new Notice(`Command failed: ${err}`);
+        }
+    }
+
+    // ========== FILE OPERATIONS (Direct) ==========
+
+    private async duplicateFile(file: TFile) {
+        const dir = file.parent?.path || '';
+        const newName = this.getDuplicateName(file.name);
+        const newPath = `${dir}/${newName}`;
+        try {
+            await this.app.vault.copy(file, newPath);
+            new Notice(`Duplicated to ${newName}`);
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Duplicate failed: ${message}`);
+        }
+    }
+
+    private getDuplicateName(original: string): string {
+        const ext = original.includes('.') ? original.slice(original.lastIndexOf('.')) : '';
+        const base = original.includes('.') ? original.slice(0, original.lastIndexOf('.')) : original;
+        let counter = 1;
+        let candidate = `${base} ${counter}${ext}`;
+        while (this.app.vault.getAbstractFileByPath(candidate)) {
+            counter++;
+            candidate = `${base} ${counter}${ext}`;
+        }
+        return candidate;
+    }
+
+    private async renameFile(file: TFile) {
+        new InputModal(this.app, 'Rename file', 'New name', file.name, async (newName) => {
+            if (!newName || newName === file.name) return;
+            const dir = file.parent?.path || '';
+            const newPath = `${dir}/${newName}`;
+            try {
+                await this.app.vault.rename(file, newPath);
+                new Notice('File renamed');
+                this.renderContent();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                new Notice(`Rename failed: ${message}`);
+            }
+        }).open();
+    }
+
+    private async deleteFile(file: TFile) {
+        const confirmMsg = `Delete "${file.name}"?`;
+        if (!confirm(confirmMsg)) return;
+        try {
+            // Send to Obsidian .trash folder (local vault trash)
+            await this.app.vault.trash(file, false);
+            new Notice('File moved to trash');
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Delete failed: ${message}`);
+        }
+    }
+
+    private async renameFolder(folder: TFolder) {
+        new InputModal(this.app, 'Rename folder', 'New name', folder.name, async (newName) => {
+            if (!newName || newName === folder.name) return;
+            const parent = folder.parent?.path || '';
+            const newPath = parent ? `${parent}/${newName}` : newName;
+            try {
+                await this.app.vault.rename(folder, newPath);
+                new Notice('Folder renamed');
+                this.renderContent();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                new Notice(`Rename failed: ${message}`);
+            }
+        }).open();
+    }
+
+    private async deleteFolder(folder: TFolder) {
+        const confirmMsg = `Delete folder "${folder.name}" and all its contents?`;
+        if (!confirm(confirmMsg)) return;
+        try {
+            // Send to Obsidian .trash folder (local vault trash)
+            await this.app.vault.trash(folder, false);
+            new Notice('Folder moved to trash');
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Delete failed: ${message}`);
+        }
+    }
+
+    private async newNoteInFolder(folder: TFolder) {
+        const defaultName = 'Untitled.md';
+        let candidate = `${folder.path}/${defaultName}`;
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(candidate)) {
+            candidate = `${folder.path}/Untitled ${counter}.md`;
+            counter++;
+        }
+        try {
+            await this.app.vault.create(candidate, '');
+            new Notice('Note created');
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Failed to create note: ${message}`);
+        }
+    }
+
+    private async newFolderInFolder(parent: TFolder) {
+        const defaultName = 'New Folder';
+        let candidate = `${parent.path}/${defaultName}`;
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(candidate)) {
+            candidate = `${parent.path}/New Folder ${counter}`;
+            counter++;
+        }
+        try {
+            await this.app.vault.createFolder(candidate);
+            new Notice('Folder created');
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Failed to create folder: ${message}`);
+        }
+    }
+
+    private async newCanvasInFolder(folder: TFolder) {
+        const defaultName = 'Untitled.canvas';
+        let candidate = `${folder.path}/${defaultName}`;
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(candidate)) {
+            candidate = `${folder.path}/Untitled ${counter}.canvas`;
+            counter++;
+        }
+        try {
+            await this.app.vault.create(candidate, '');
+            new Notice('Canvas created');
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Failed to create canvas: ${message}`);
+        }
+    }
+
+    // ========== DRAG & DROP ==========
+
+    private makeDropTarget(el: HTMLElement, folder: TFolder, allowFolders: boolean = false) {
         el.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -363,128 +656,36 @@ export class PortalsView extends ItemView {
             const filePath = e.dataTransfer?.getData('text/plain');
             if (!filePath) return;
             const file = this.app.vault.getAbstractFileByPath(filePath);
-            if (!(file instanceof TFile)) return;
-            const newPath = `${folder.path}/${file.name}`;
-            if (newPath === file.path) return;
+            if (!file) return;
+
+            const targetPath = `${folder.path}/${file.name}`;
+            if (targetPath === file.path) return;
+
             try {
-                await this.app.vault.rename(file, newPath);
+                if (file instanceof TFile) {
+                    await this.app.vault.rename(file, targetPath);
+                    new Notice(`Moved to ${folder.name}`);
+                } else if (allowFolders && file instanceof TFolder) {
+                    if (targetPath.startsWith(file.path + '/') || targetPath === file.path) {
+                        new Notice('Cannot move folder into itself');
+                        return;
+                    }
+                    await this.app.vault.rename(file, targetPath);
+                    new Notice(`Moved folder to ${folder.name}`);
+                } else {
+                    new Notice('Cannot move this item');
+                    return;
+                }
                 this.renderContent();
             } catch (err) {
                 console.error('Drop error:', err);
                 const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Failed to move file: ${message}`);
+                new Notice(`Failed to move: ${message}`);
             }
         });
     }
 
-    // Helper to safely execute commands and show errors
-    private safeExecute(commandId: string, successMessage?: string) {
-        try {
-            (this.app as any).commands.executeCommandById(commandId);
-            if (successMessage) {
-                new Notice(successMessage);
-            }
-        } catch (err) {
-            console.error(`Command failed: ${commandId}`, err);
-            const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Command failed: ${message}`);
-        }
-    }
-
-    private addCoreFileMenuItems(menu: Menu, file: TFile | TFolder) {
-        // Use safeExecute for all command calls
-        if (file instanceof TFile) {
-            menu.addItem(item => item
-                .setTitle('Open in new tab')
-                .setIcon('document')
-                .onClick(() => {
-                    this.app.workspace.getLeaf('tab').openFile(file);
-                }));
-            menu.addItem(item => item
-                .setTitle('Open to the right')
-                .setIcon('file-symlink')
-                .onClick(() => {
-                    this.app.workspace.getLeaf('split', 'vertical').openFile(file);
-                }));
-            menu.addSeparator();
-            menu.addItem(item => item
-                .setTitle('Duplicate')
-                .setIcon('copy')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:copy-file');
-                }));
-            menu.addItem(item => item
-                .setTitle('Open version history')
-                .setIcon('history')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:open-file-history');
-                }));
-            menu.addSeparator();
-            menu.addItem(item => item
-                .setTitle('Rename')
-                .setIcon('pencil')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:rename-file');
-                }));
-            menu.addItem(item => item
-                .setTitle('Delete')
-                .setIcon('trash')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:delete-file');
-                }));
-        } else if (file instanceof TFolder) {
-            menu.addItem(item => item
-                .setTitle('New note')
-                .setIcon('document')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:new-note');
-                }));
-            menu.addItem(item => item
-                .setTitle('New folder')
-                .setIcon('folder')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:new-folder');
-                }));
-            menu.addItem(item => item
-                .setTitle('New canvas')
-                .setIcon('layout-dashboard')
-                .onClick(() => {
-                    this.safeExecute('canvas:new-canvas');
-                }));
-            menu.addSeparator();
-            menu.addItem(item => item
-                .setTitle('Duplicate')
-                .setIcon('copy')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:copy-folder');
-                }));
-            menu.addItem(item => item
-                .setTitle('Move folder to...')
-                .setIcon('folder-symlink')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:move-folder');
-                }));
-            menu.addSeparator();
-            menu.addItem(item => item
-                .setTitle('Rename')
-                .setIcon('pencil')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:rename-folder');
-                }));
-            menu.addItem(item => item
-                .setTitle('Delete')
-                .setIcon('trash')
-                .onClick(() => {
-                    this.safeExecute('file-explorer:delete-folder');
-                }));
-            menu.addItem(item => item
-                .setTitle('Search in folder')
-                .setIcon('search')
-                .onClick(() => {
-                    this.safeExecute('global-search:open');
-                }));
-        }
-    }
+    // ========== FOLDER TREE ==========
 
     buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder') {
         const details = container.createEl('details');
@@ -503,14 +704,17 @@ export class PortalsView extends ItemView {
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
         summary.createSpan({ text: displayName });
 
-        this.makeDropTarget(summary, folder);
+        // Make folder draggable
+        summary.draggable = true;
+        summary.addEventListener('dragstart', (e) => {
+            e.dataTransfer?.setData('text/plain', folder.path);
+        });
+
+        this.makeDropTarget(summary, folder, true);
 
         summary.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            const menu = new Menu();
-            this.app.workspace.trigger('file-menu', menu, folder, 'file-explorer');
-            this.addCoreFileMenuItems(menu, folder);
-            menu.showAtPosition({ x: e.clientX, y: e.clientY });
+            this.showFolderContextMenu(e, folder);
         });
 
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
@@ -545,10 +749,7 @@ export class PortalsView extends ItemView {
 
                 fileEl.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
-                    const menu = new Menu();
-                    this.app.workspace.trigger('file-menu', menu, child, 'file-explorer');
-                    this.addCoreFileMenuItems(menu, child);
-                    menu.showAtPosition({ x: e.clientX, y: e.clientY });
+                    this.showFileContextMenu(e, child);
                 });
             }
         }
