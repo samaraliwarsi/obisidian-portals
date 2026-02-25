@@ -101,8 +101,7 @@ export class PortalsView extends ItemView {
             if (!container) return;
             container.empty();
             container.addClass('portals-container');
-            // Ensure container is positioned for absolute button
-            container.style.position = 'relative';
+            container.style.position = 'relative'; // for absolute button
 
             const spaces = this.plugin.settings.spaces;
 
@@ -167,6 +166,12 @@ export class PortalsView extends ItemView {
                 tab.addEventListener('click', async () => {
                     this.hideTooltip(0);
                     this.plugin.settings.selectedSpace = space.path;
+
+                    // If the selected space is a folder, ensure its path is in openFolders
+                    if (space.type === 'folder' && !this.plugin.settings.openFolders.includes(space.path)) {
+                        this.plugin.settings.openFolders.push(space.path);
+                    }
+
                     await this.plugin.saveSettings();
                     await this.render();
                     const newActiveTab = container.querySelector('.portals-tab.is-active');
@@ -242,7 +247,7 @@ export class PortalsView extends ItemView {
                 }
             }
 
-            // ===== FLOATING COLLAPSE BUTTON =====
+            // Floating collapse button
             const collapseBtn = container.createEl('button', { cls: 'portals-collapse-all-btn' });
             collapseBtn.createEl('i', { cls: 'ph ph-stack' });
             collapseBtn.addEventListener('click', async () => {

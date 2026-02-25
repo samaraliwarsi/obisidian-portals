@@ -8,6 +8,15 @@ export default class PortalsPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
+        // Ensure the selected space (if it's a folder) is in openFolders
+        const selectedSpace = this.settings.spaces.find(s => s.path === this.settings.selectedSpace);
+        if (selectedSpace && selectedSpace.type === 'folder') {
+            if (!this.settings.openFolders.includes(selectedSpace.path)) {
+                this.settings.openFolders.push(selectedSpace.path);
+                await this.saveSettings();
+            }
+        }
+
         this.registerView(
             VIEW_TYPE_PORTALS,
             (leaf) => new PortalsView(leaf, this)
