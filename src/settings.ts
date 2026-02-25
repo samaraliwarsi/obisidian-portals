@@ -59,7 +59,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     new Notice('Changes will take effect after restarting Obsidian.');
                 }));
 
-        // ===== FILE PANE COLOR STYLE =====
+        // File pane color style
         new Setting(containerEl)
             .setName('File pane color style')
             .setDesc('How to apply per‑space colors to the file area.')
@@ -74,7 +74,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        // ===== TAB COLORS TOGGLE =====
+        // Tab colors toggle
         new Setting(containerEl)
             .setName('Tab colors')
             .setDesc('Show per‑space background colors on tabs.')
@@ -148,25 +148,73 @@ export class SpacesSettingTab extends PluginSettingTab {
 
                 controlsDiv.createSpan({ text: `Current icon: ${rootSpace.icon}`, cls: 'mod-cta' });
 
-                const colorInput = controlsDiv.createEl('input', {
-                    type: 'text',
-                    placeholder: '#ff0000 or rgba(255,0,0,0.5)',
-                    value: rootSpace.color
-                });
-                colorInput.style.width = '150px';
+                // Color picker for root space (same as addSpaceControls but inline)
+                // For simplicity, we reuse addSpaceControls logic – but we can just duplicate here.
+                // To avoid duplication, we could refactor, but for clarity we'll keep it simple.
+                // Actually, let's call addSpaceControls but it expects a Setting – not ideal.
+                // Instead, we'll add the same color picker manually.
 
-                const preview = controlsDiv.createEl('span', { cls: 'portals-color-preview' });
+                const colorWrapper = controlsDiv.createDiv({ cls: 'portals-color-wrapper' });
+                colorWrapper.style.display = 'flex';
+                colorWrapper.style.alignItems = 'center';
+                colorWrapper.style.gap = '8px';
+                colorWrapper.style.flexWrap = 'wrap';
+
+                let initialHex = '#ff0000';
+                let initialOpacity = 1;
+                if (rootSpace.color && rootSpace.color !== 'transparent') {
+                    const rgba = rootSpace.color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                    if (rgba) {
+                        initialHex = `#${Number(rgba[1]).toString(16).padStart(2,'0')}${Number(rgba[2]).toString(16).padStart(2,'0')}${Number(rgba[3]).toString(16).padStart(2,'0')}`;
+                        initialOpacity = rgba[4] ? parseFloat(rgba[4]) : 1;
+                    } else if (rootSpace.color.startsWith('#')) {
+                        initialHex = rootSpace.color;
+                    }
+                }
+
+                const colorInput = colorWrapper.createEl('input', {
+                    type: 'color',
+                    value: initialHex
+                });
+                colorInput.style.width = '40px';
+                colorInput.style.height = '30px';
+                colorInput.style.padding = '0';
+                colorInput.style.border = 'none';
+                colorInput.style.cursor = 'pointer';
+
+                const opacitySlider = colorWrapper.createEl('input', {
+                    type: 'range',
+                    value: String(initialOpacity * 100),
+                    attr: { min: '0', max: '100', step: '1' }
+                });
+                opacitySlider.style.width = '80px';
+
+                const opacityValue = colorWrapper.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
+                opacityValue.style.minWidth = '40px';
+                opacityValue.style.fontSize = '12px';
+
+                const preview = colorWrapper.createEl('span', { cls: 'portals-color-preview' });
                 preview.style.width = '24px';
                 preview.style.height = '24px';
                 preview.style.borderRadius = '4px';
                 preview.style.border = '1px solid var(--background-modifier-border)';
-                preview.style.backgroundColor = rootSpace.color;
+                preview.style.backgroundColor = rootSpace.color !== 'transparent' ? rootSpace.color : 'transparent';
 
-                colorInput.addEventListener('input', async () => {
-                    rootSpace.color = colorInput.value;
-                    preview.style.backgroundColor = rootSpace.color;
-                    await this.plugin.saveSettings();
-                });
+                const updateRootColor = () => {
+                    const hex = colorInput.value;
+                    const opacity = parseInt(opacitySlider.value) / 100;
+                    const r = parseInt(hex.slice(1,3), 16);
+                    const g = parseInt(hex.slice(3,5), 16);
+                    const b = parseInt(hex.slice(5,7), 16);
+                    const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                    rootSpace.color = rgba;
+                    preview.style.backgroundColor = rgba;
+                    opacityValue.setText(`${Math.round(opacity * 100)}%`);
+                    this.plugin.saveSettings();
+                };
+
+                colorInput.addEventListener('input', updateRootColor);
+                opacitySlider.addEventListener('input', updateRootColor);
             }
         }
 
@@ -314,29 +362,72 @@ export class SpacesSettingTab extends PluginSettingTab {
             cls: 'mod-cta'
         });
 
+        // Color picker with opacity
         const colorWrapper = setting.controlEl.createDiv({ cls: 'portals-color-wrapper' });
         colorWrapper.style.display = 'flex';
         colorWrapper.style.alignItems = 'center';
         colorWrapper.style.gap = '8px';
+        colorWrapper.style.flexWrap = 'wrap';
 
+        // Parse existing color
+        let initialHex = '#ff0000';
+        let initialOpacity = 1;
+        if (space.color && space.color !== 'transparent') {
+            const rgba = space.color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (rgba) {
+                initialHex = `#${Number(rgba[1]).toString(16).padStart(2,'0')}${Number(rgba[2]).toString(16).padStart(2,'0')}${Number(rgba[3]).toString(16).padStart(2,'0')}`;
+                initialOpacity = rgba[4] ? parseFloat(rgba[4]) : 1;
+            } else if (space.color.startsWith('#')) {
+                initialHex = space.color;
+            }
+        }
+
+        // Color input
         const colorInput = colorWrapper.createEl('input', {
-            type: 'text',
-            placeholder: '#ff0000 or rgba(255,0,0,0.5)',
-            value: space.color
+            type: 'color',
+            value: initialHex
         });
-        colorInput.style.flex = '1';
+        colorInput.style.width = '40px';
+        colorInput.style.height = '30px';
+        colorInput.style.padding = '0';
+        colorInput.style.border = 'none';
+        colorInput.style.cursor = 'pointer';
 
+        // Opacity slider
+        const opacitySlider = colorWrapper.createEl('input', {
+            type: 'range',
+            value: String(initialOpacity * 100),
+            attr: { min: '0', max: '100', step: '1' }
+        });
+        opacitySlider.style.width = '80px';
+
+        // Opacity percentage display
+        const opacityValue = colorWrapper.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
+        opacityValue.style.minWidth = '40px';
+        opacityValue.style.fontSize = '12px';
+
+        // Preview swatch
         const preview = colorWrapper.createEl('span', { cls: 'portals-color-preview' });
         preview.style.width = '24px';
         preview.style.height = '24px';
         preview.style.borderRadius = '4px';
         preview.style.border = '1px solid var(--background-modifier-border)';
-        preview.style.backgroundColor = space.color;
+        preview.style.backgroundColor = space.color !== 'transparent' ? space.color : 'transparent';
 
-        colorInput.addEventListener('input', async () => {
-            space.color = colorInput.value;
-            preview.style.backgroundColor = space.color;
-            await this.plugin.saveSettings();
-        });
+        const updateColor = () => {
+            const hex = colorInput.value;
+            const opacity = parseInt(opacitySlider.value) / 100;
+            const r = parseInt(hex.slice(1,3), 16);
+            const g = parseInt(hex.slice(3,5), 16);
+            const b = parseInt(hex.slice(5,7), 16);
+            const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            space.color = rgba;
+            preview.style.backgroundColor = rgba;
+            opacityValue.setText(`${Math.round(opacity * 100)}%`);
+            this.plugin.saveSettings();
+        };
+
+        colorInput.addEventListener('input', updateColor);
+        opacitySlider.addEventListener('input', updateColor);
     }
 }
