@@ -45,7 +45,10 @@ export class SpacesSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'Portals Settings' });
+        // Main header
+        const mainHeader = containerEl.createEl('h2', { text: 'Portals Settings' });
+        mainHeader.style.fontSize = '1.5em';
+        mainHeader.style.marginBottom = '1em';
 
         // Replace file explorer toggle
         new Setting(containerEl)
@@ -148,12 +151,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
                 controlsDiv.createSpan({ text: `Current icon: ${rootSpace.icon}`, cls: 'mod-cta' });
 
-                // Color picker for root space (same as addSpaceControls but inline)
-                // For simplicity, we reuse addSpaceControls logic – but we can just duplicate here.
-                // To avoid duplication, we could refactor, but for clarity we'll keep it simple.
-                // Actually, let's call addSpaceControls but it expects a Setting – not ideal.
-                // Instead, we'll add the same color picker manually.
-
+                // Color picker for root space
                 const colorWrapper = controlsDiv.createDiv({ cls: 'portals-color-wrapper' });
                 colorWrapper.style.display = 'flex';
                 colorWrapper.style.alignItems = 'center';
@@ -218,8 +216,13 @@ export class SpacesSettingTab extends PluginSettingTab {
             }
         }
 
+        // ===== SPACER AFTER VAULT ROOT =====
+        containerEl.createEl('div', { cls: 'settings-spacer' }).style.margin = '20px 0';
+
         // ========== FOLDERS SECTION ==========
-        containerEl.createEl('h3', { text: 'Folders' });
+        const foldersHeader = containerEl.createEl('h3', { text: 'Folders' });
+        foldersHeader.style.fontSize = '1.3em';
+        foldersHeader.style.marginTop = '1em';
 
         new Setting(containerEl)
             .setName('Show subfolders')
@@ -290,8 +293,13 @@ export class SpacesSettingTab extends PluginSettingTab {
             }
         }
 
+        // ===== SPACER BEFORE TAGS =====
+        containerEl.createEl('div', { cls: 'settings-spacer' }).style.margin = '20px 0';
+
         // ========== TAGS SECTION ==========
-        containerEl.createEl('h3', { text: 'Tags' });
+        const tagsHeader = containerEl.createEl('h3', { text: 'Tags' });
+        tagsHeader.style.fontSize = '1.3em';
+        tagsHeader.style.marginTop = '1em';
 
         new Setting(containerEl)
             .setName('Show tags')
