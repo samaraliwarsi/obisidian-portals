@@ -4861,6 +4861,48 @@ details[open] > .folder-summary::before {
   .portals-tab-bar::-webkit-scrollbar {
     height: 12px;
   }
+
+  /* Mobile Settings */
+  .portals-color-wrapper {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+    }
+
+    .portals-color-wrapper input[type="color"] {
+        width: 100% !important;
+        height: 40px !important;
+    }
+
+    .portals-color-wrapper input[type="range"] {
+        width: 100% !important;
+    }
+
+    .portals-color-wrapper .portals-color-preview {
+        width: 100% !important;
+        height: 30px !important;
+    }
+
+    .portals-color-wrapper span {
+        display: block;
+        width: 100%;
+        text-align: left;
+    }
+
+    setting-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .setting-item .setting-item-info {
+        width: 100% !important;
+        margin-bottom: 8px !important;
+    }
+
+    .setting-item .setting-item-control {
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
 }
 
 /*Tooltip for inactive tabs*/
