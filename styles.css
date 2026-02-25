@@ -4975,6 +4975,53 @@ details[open] > .folder-summary::before {
     filter: none; /* override any grayscale from inactive if needed */
 }
 
+/* Footer with collapse all button */
+.portals-footer {
+    padding: 8px;
+    border-top: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    flex-shrink: 0;
+}
+
+.portals-collapse-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 6px 12px;
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.1s, color 0.1s;
+}
+
+.portals-collapse-all-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.portals-collapse-all-btn i {
+    font-size: 18px;
+}
+
+/* Ensure the container uses flex column */
+.portals-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 10px 10px 0 10px;
+    overflow: hidden;
+}
+
+.portals-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
 .portals-container {
     padding-bottom: 0 !important;
 }

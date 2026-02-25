@@ -140,7 +140,6 @@ export class PortalsView extends ItemView {
                         tab.createSpan({ text: displayName });
                     }
                 } else {
-                    // Add tooltip listeners for inactive tabs
                     tab.addEventListener('mouseenter', () => {
                         this.showTooltip(displayName, tab);
                     });
@@ -164,16 +163,11 @@ export class PortalsView extends ItemView {
                     iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
                 }
 
-                // Click handler – always re-render the whole view
                 tab.addEventListener('click', async () => {
-                    // Hide any visible tooltip immediately
                     this.hideTooltip(0);
-
                     this.plugin.settings.selectedSpace = space.path;
                     await this.plugin.saveSettings();
-                    await this.render(); // full re-render ensures correct listeners
-
-                    // Scroll the newly active tab into view
+                    await this.render();
                     const newActiveTab = container.querySelector('.portals-tab.is-active');
                     if (newActiveTab) {
                         setTimeout(() => {
@@ -220,7 +214,7 @@ export class PortalsView extends ItemView {
                 }
             });
 
-            // Scroll initial active tab into view after render
+            // Scroll initial active tab into view
             setTimeout(() => {
                 const activeTab = tabBar.querySelector('.portals-tab.is-active');
                 if (activeTab) {
@@ -250,15 +244,48 @@ export class PortalsView extends ItemView {
                 }
             }
 
+            // ===== COLLAPSE ALL BUTTON (FOOTER) =====
+            const footer = container.createEl('div', { cls: 'portals-footer' });
+            const collapseBtn = footer.createEl('button', { cls: 'portals-collapse-all-btn' });
+            collapseBtn.createEl('i', { cls: 'ph ph-folders' });
+            collapseBtn.createSpan({ text: ' Collapse all' });
+            collapseBtn.addEventListener('click', async () => {
+                this.plugin.settings.openFolders = [];
+                await this.plugin.saveSettings();
+                this.renderContent(); // re-render the content area only
+            });
+
         } catch (e) {
             console.error('Portals render error:', e);
         }
     }
 
-    // renderContent is no longer needed – we use full render only
-    // but keep it for backward compatibility if called elsewhere
     async renderContent() {
-        await this.render();
+        const container = this.containerEl.children[1] as HTMLElement;
+        const contentArea = container.querySelector('.portals-content');
+        if (!contentArea) return;
+
+        contentArea.empty();
+
+        const spaces = this.plugin.settings.spaces;
+        const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
+        if (!selectedSpace) return;
+
+        if (selectedSpace.type === 'folder') {
+            const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+            if (folder && folder instanceof TFolder) {
+                const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
+                this.applySpaceBackground(spaceContent, selectedSpace.color);
+                this.makeDropTarget(spaceContent, folder);
+                this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
+            } else {
+                contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
+            }
+        } else {
+            const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
+            this.applySpaceBackground(spaceContent, selectedSpace.color);
+            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
+        }
     }
 
     private applySpaceBackground(el: HTMLElement, color: string | undefined) {
@@ -296,6 +323,7 @@ export class PortalsView extends ItemView {
             fileIcon.createEl('i', { cls: 'ph ph-file' });
             fileEl.createSpan({ text: file.name });
 
+            fileEl.dataset.path = file.path;
             fileEl.draggable = true;
             fileEl.addEventListener('dragstart', (e) => {
                 e.dataTransfer?.setData('text/plain', file.path);
@@ -471,6 +499,7 @@ export class PortalsView extends ItemView {
 
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
 
+        // Sort folders first, then files alphabetically
         const sorted = folder.children.sort((a, b) => {
             const aIsFolder = a instanceof TFolder;
             const bIsFolder = b instanceof TFolder;
@@ -488,6 +517,7 @@ export class PortalsView extends ItemView {
                 fileIcon.createEl('i', { cls: 'ph ph-file' });
                 fileEl.createSpan({ text: child.name });
 
+                fileEl.dataset.path = child.path;
                 fileEl.draggable = true;
                 fileEl.addEventListener('dragstart', (e) => {
                     e.dataTransfer?.setData('text/plain', child.path);
