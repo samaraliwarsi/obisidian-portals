@@ -71,29 +71,42 @@ export class PortalsView extends ItemView {
 
                 if (space.icon) {
                     const iconSpan = tab.createSpan({ cls: 'portals-tab-icon' });
-                    // Create <i> element for Phosphor icon
                     iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
                 }
 
-                let displayName = space.path;
+                let displayName = '';
                 if (space.type === 'folder') {
                     const folder = this.app.vault.getAbstractFileByPath(space.path);
                     displayName = folder instanceof TFolder ? folder.name : space.path;
                 } else {
                     displayName = '#' + space.path;
                 }
-                tab.createSpan({ text: displayName });
+
+                if (space.path === this.plugin.settings.selectedSpace) {
+                    tab.createSpan({ text: displayName });
+                } else {
+                    tab.title = displayName;
+                }
 
                 tab.addEventListener('click', async () => {
+                    tabBar.querySelectorAll('.portals-tab').forEach(t => t.removeClass('is-active'));
+                    tab.addClass('is-active');
                     this.plugin.settings.selectedSpace = space.path;
                     await this.plugin.saveSettings();
                     this.renderContent();
+                    setTimeout(() => {
+                        tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }, 0);
                 });
             }
 
-            // Make tabs sortable
+            // Sortable with touch delay for mobile
             new Sortable(tabBar, {
                 animation: 150,
+                delay: 400,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 5,
+                scrollSensitivity: 30,
                 onEnd: async (evt: SortableEvent) => {
                     const newOrder: SpaceConfig[] = [];
                     const tabElements = tabBar.querySelectorAll('.portals-tab');
@@ -111,6 +124,14 @@ export class PortalsView extends ItemView {
                 }
             });
 
+            // Scroll initial active tab into view
+            setTimeout(() => {
+                const activeTab = tabBar.querySelector('.portals-tab.is-active');
+                if (activeTab) {
+                    activeTab.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+                }
+            }, 0);
+
             // Content area
             const contentArea = container.createEl('div', { cls: 'portals-content' });
 
@@ -126,7 +147,7 @@ export class PortalsView extends ItemView {
                     } else {
                         contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
                     }
-                } else { // tag space
+                } else {
                     const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
                     spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
                     this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
@@ -182,7 +203,6 @@ export class PortalsView extends ItemView {
         for (const file of taggedFiles) {
             const fileEl = container.createDiv({ cls: 'file-item' });
             const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
-            // File icon
             fileIcon.createEl('i', { cls: 'ph ph-file' });
             fileEl.createSpan({ text: file.name });
 
@@ -344,7 +364,6 @@ export class PortalsView extends ItemView {
         summary.addClass('folder-summary');
 
         const iconSpan = summary.createSpan({ cls: 'folder-icon' });
-        // Folder icon
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
 
         summary.createSpan({ text: folder.name });

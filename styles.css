@@ -4623,6 +4623,7 @@
 }
 /* ===== End of Phosphor Icon Definitions ===== */
 
+
 /* ===== Your Plugin's Custom UI Styles ===== */
 .portals-container {
     padding: 10px;
@@ -4634,12 +4635,31 @@
 
 .portals-tab-bar {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     gap: 4px;
     margin-bottom: 12px;
     border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: 6px;
+    padding-bottom: 15px;
+    scrollbar-width: auto;
+}
+
+.portals-tab-bar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.portals-tab-bar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.portals-tab-bar::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.portals-tab-bar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 
 .portals-tab {
@@ -4650,23 +4670,51 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
-    transition: background-color 0.1s, opacity 0.1s;
+    white-space: nowrap;
+    transition: background-color 0.1s, filter 0.1s;
     border: none;
     user-select: none;
     -webkit-user-select: none;
-    opacity: 0.4;
+    filter: grayscale(100%) opacity(0.4);
     border-bottom: 2px solid transparent;
+    flex-shrink: 0;
 }
 
 .portals-tab:hover {
     background-color: var(--background-modifier-hover);
-    opacity: 1;
+    filter: grayscale(0%) opacity(1);
 }
 
 .portals-tab.is-active {
-    opacity: 1;
+    filter: grayscale(0%) opacity(1);
     background-color: transparent;
     border-bottom: 2px solid var(--interactive-accent);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .portals-tab {
+    padding: 8px 12px;
+    font-size: 1em;
+    margin-top: 2px;
+  }
+
+  .portals-tab-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .portals-tab-icon i {
+    font-size: 20px;
+  }
+
+  .portals-tab-bar {
+    padding-bottom: 20px;
+  }
+
+  .portals-tab-bar::-webkit-scrollbar {
+    height: 12px;
+  }
 }
 
 .portals-tab-icon,
