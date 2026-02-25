@@ -4719,6 +4719,36 @@ details[open] > .folder-summary::before {
 }
 
 
+/*==Plugin Floating buttons All==*/
+.portals-floating-btn {
+    position: absolute;
+    left: 16px;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(128, 128, 128, 0.15);
+    backdrop-filter: blur(2px);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
+}
+
+.portals-floating-btn:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.portals-floating-btn i {
+    font-size: 18px;
+}
+
 /* ===== Your Plugin's Custom UI Styles ===== */
 .portals-container {
     padding: 10px 10px 0 10px;
@@ -4978,29 +5008,6 @@ details[open] > .folder-summary::before {
 /* Floating collapse button – forced styles */
 .portals-container {
     position: relative !important;
-}
-
-.portals-collapse-all-btn {
-    position: absolute !important;
-    bottom: 16px !important;
-    left: 16px !important;
-    z-index: 100 !important;
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 50% !important;  /* forces circle */
-    background: rgba(128, 128, 128, 0.15) !important;
-    border: none !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    color: var(--text-muted) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    transition: background-color 0.1s, color 0.1s, box-shadow 0.1s !important;
-    padding: 0 !important; /* remove any default button padding */
-    margin: 0 !important;
-    line-height: 1 !important;
-    background: radial-gradient(circle at center, rgba(128, 128, 128, 0.50) 0%, rgba(128, 128, 128, 0) 90%) !important;
 }
 
 .portals-collapse-all-btn:hover {

@@ -19,6 +19,8 @@ export interface SpacesSettings {
     pinVaultRoot: boolean;
     filePaneColorStyle: 'gradient' | 'solid' | 'none';
     tabColorEnabled: boolean;
+    sortBy: 'name' | 'created' | 'modified';
+    sortOrder: 'asc' | 'desc';
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -30,7 +32,9 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     replaceFileExplorer: false,
     pinVaultRoot: false,
     filePaneColorStyle: 'gradient',
-    tabColorEnabled: true
+    tabColorEnabled: true,
+    sortBy: 'name',
+    sortOrder: 'asc'
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -351,6 +355,23 @@ export class SpacesSettingTab extends PluginSettingTab {
                 }
             }
         }
+
+        // ========== EXPORT / IMPORT ==========
+        containerEl.createEl('h3', { text: 'Backup / Restore' });
+
+        new Setting(containerEl)
+            .setName('Export settings')
+            .setDesc('Download your current portals configuration as a JSON file.')
+            .addButton(button => button
+                .setButtonText('Export')
+                .onClick(() => this.exportSettings()));
+
+        new Setting(containerEl)
+            .setName('Import settings')
+            .setDesc('Load settings from a JSON file. This will replace your current configuration.')
+            .addButton(button => button
+                .setButtonText('Import')
+                .onClick(() => this.importSettings()));
     }
 
     private addSpaceControls(setting: Setting, space: SpaceConfig) {
@@ -370,14 +391,12 @@ export class SpacesSettingTab extends PluginSettingTab {
             cls: 'mod-cta'
         });
 
-        // Color picker with opacity
         const colorWrapper = setting.controlEl.createDiv({ cls: 'portals-color-wrapper' });
         colorWrapper.style.display = 'flex';
         colorWrapper.style.alignItems = 'center';
         colorWrapper.style.gap = '8px';
         colorWrapper.style.flexWrap = 'wrap';
 
-        // Parse existing color
         let initialHex = '#ff0000';
         let initialOpacity = 1;
         if (space.color && space.color !== 'transparent') {
@@ -390,7 +409,6 @@ export class SpacesSettingTab extends PluginSettingTab {
             }
         }
 
-        // Color input
         const colorInput = colorWrapper.createEl('input', {
             type: 'color',
             value: initialHex
@@ -401,7 +419,6 @@ export class SpacesSettingTab extends PluginSettingTab {
         colorInput.style.border = 'none';
         colorInput.style.cursor = 'pointer';
 
-        // Opacity slider
         const opacitySlider = colorWrapper.createEl('input', {
             type: 'range',
             value: String(initialOpacity * 100),
@@ -409,12 +426,10 @@ export class SpacesSettingTab extends PluginSettingTab {
         });
         opacitySlider.style.width = '80px';
 
-        // Opacity percentage display
         const opacityValue = colorWrapper.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
         opacityValue.style.minWidth = '40px';
         opacityValue.style.fontSize = '12px';
 
-        // Preview swatch
         const preview = colorWrapper.createEl('span', { cls: 'portals-color-preview' });
         preview.style.width = '24px';
         preview.style.height = '24px';
@@ -437,5 +452,39 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         colorInput.addEventListener('input', updateColor);
         opacitySlider.addEventListener('input', updateColor);
+    }
+
+    private exportSettings() {
+        const data = JSON.stringify(this.plugin.settings, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `portals-settings-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        new Notice('Settings exported');
+    }
+
+    private importSettings() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const imported = JSON.parse(text);
+                // Merge with defaults to ensure all fields exist
+                this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS, imported);
+                await this.plugin.saveSettings();
+                this.display(); // refresh settings view
+                new Notice('Settings imported successfully');
+            } catch (e) {
+                new Notice('Invalid settings file');
+            }
+        };
+        input.click();
     }
 }

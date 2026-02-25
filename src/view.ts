@@ -144,7 +144,9 @@ export class PortalsView extends ItemView {
             openFolders: s.openFolders.join(','),
             selectedSpace: s.selectedSpace,
             filePaneColorStyle: s.filePaneColorStyle,
-            tabColorEnabled: s.tabColorEnabled
+            tabColorEnabled: s.tabColorEnabled,
+            sortBy: s.sortBy,
+            sortOrder: s.sortOrder
         });
     }
 
@@ -291,7 +293,7 @@ export class PortalsView extends ItemView {
                     if (folder && folder instanceof TFolder) {
                         const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
                         this.applySpaceBackground(spaceContent, selectedSpace.color);
-                        this.makeDropTarget(spaceContent, folder, true); // allow folder drops
+                        this.makeDropTarget(spaceContent, folder, true);
                         this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
                     } else {
                         contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
@@ -303,13 +305,96 @@ export class PortalsView extends ItemView {
                 }
             }
 
-            // Floating collapse button
-            const collapseBtn = container.createEl('button', { cls: 'portals-collapse-all-btn' });
+            // ===== FLOATING BUTTONS =====
+
+            // Helper to create a floating button
+            const createFloatingButton = (icon: string, tooltip: string, bottom: number, onClick: (e: MouseEvent) => void) => {
+                const btn = container.createEl('button', { cls: 'portals-floating-btn' });
+                btn.style.bottom = bottom + 'px';
+                btn.createEl('i', { cls: `ph ph-${icon}` });
+                btn.addEventListener('mouseenter', () => this.showTooltip(tooltip, btn));
+                btn.addEventListener('mouseleave', () => this.hideTooltip(100));
+                btn.addEventListener('click', onClick);
+                return btn;
+            };
+
+            // New note button (only works in folder spaces)
+            createFloatingButton('file-plus', 'New note', 148, async () => {
+                const currentSpace = this.plugin.settings.spaces.find(s => s.path === this.plugin.settings.selectedSpace);
+                if (!currentSpace || currentSpace.type !== 'folder') {
+                    new Notice('Please select a folder space first.');
+                    return;
+                }
+                const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                if (!(folder instanceof TFolder)) {
+                    new Notice('Selected space is not a valid folder.');
+                    return;
+                }
+                await this.newNoteInFolder(folder);
+            });
+
+            // New folder button (only works in folder spaces)
+            createFloatingButton('folder-simple-plus', 'New folder', 104, async () => {
+                const currentSpace = this.plugin.settings.spaces.find(s => s.path === this.plugin.settings.selectedSpace);
+                if (!currentSpace || currentSpace.type !== 'folder') {
+                    new Notice('Please select a folder space first.');
+                    return;
+                }
+                const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                if (!(folder instanceof TFolder)) {
+                    new Notice('Selected space is not a valid folder.');
+                    return;
+                }
+                await this.newFolderInFolder(folder);
+            });
+
+            // Sort button – fixed event type
+            createFloatingButton('caret-circle-up-down', 'Sort', 60, (e: MouseEvent) => {
+                const menu = new Menu();
+                const setSort = (by: 'name' | 'created' | 'modified', order: 'asc' | 'desc') => {
+                    this.plugin.settings.sortBy = by;
+                    this.plugin.settings.sortOrder = order;
+                    this.plugin.saveSettings();
+                    this.renderContent();
+                };
+                menu.addItem(item => item
+                    .setTitle('Name (A → Z)')
+                    .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'asc')
+                    .onClick(() => setSort('name', 'asc')));
+                menu.addItem(item => item
+                    .setTitle('Name (Z → A)')
+                    .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'desc')
+                    .onClick(() => setSort('name', 'desc')));
+                menu.addSeparator();
+                menu.addItem(item => item
+                    .setTitle('Created (oldest first)')
+                    .setChecked(this.plugin.settings.sortBy === 'created' && this.plugin.settings.sortOrder === 'asc')
+                    .onClick(() => setSort('created', 'asc')));
+                menu.addItem(item => item
+                    .setTitle('Created (newest first)')
+                    .setChecked(this.plugin.settings.sortBy === 'created' && this.plugin.settings.sortOrder === 'desc')
+                    .onClick(() => setSort('created', 'desc')));
+                menu.addSeparator();
+                menu.addItem(item => item
+                    .setTitle('Modified (oldest first)')
+                    .setChecked(this.plugin.settings.sortBy === 'modified' && this.plugin.settings.sortOrder === 'asc')
+                    .onClick(() => setSort('modified', 'asc')));
+                menu.addItem(item => item
+                    .setTitle('Modified (newest first)')
+                    .setChecked(this.plugin.settings.sortBy === 'modified' && this.plugin.settings.sortOrder === 'desc')
+                    .onClick(() => setSort('modified', 'desc')));
+                menu.showAtPosition({ x: e.clientX, y: e.clientY });
+            });
+
+            // Collapse button
+            const collapseBtn = container.createEl('button', { cls: 'portals-floating-btn' });
+            collapseBtn.style.bottom = '16px';
             collapseBtn.createEl('i', { cls: 'ph ph-stack' });
+            collapseBtn.addEventListener('mouseenter', () => this.showTooltip('Collapse all', collapseBtn));
+            collapseBtn.addEventListener('mouseleave', () => this.hideTooltip(100));
             collapseBtn.addEventListener('click', async () => {
                 const currentSpacePath = this.plugin.settings.selectedSpace;
                 if (!currentSpacePath) return;
-
                 this.plugin.settings.openFolders = [currentSpacePath];
                 await this.plugin.saveSettings();
                 this.renderContent();
@@ -406,7 +491,6 @@ export class PortalsView extends ItemView {
     private showFileContextMenu(event: MouseEvent, file: TFile) {
         const menu = new Menu();
 
-        // Manual items we keep
         menu.addItem(item => item
             .setTitle('Open in new tab')
             .setIcon('document')
@@ -419,7 +503,6 @@ export class PortalsView extends ItemView {
 
         menu.addSeparator();
 
-        // Manual duplicate, rename, delete (proven to work)
         menu.addItem(item => item
             .setTitle('Duplicate')
             .setIcon('copy')
@@ -437,7 +520,6 @@ export class PortalsView extends ItemView {
 
         menu.addSeparator();
 
-        // Let Obsidian add its default items (Move, Copy path, Reveal, Bookmark, etc.)
         this.app.workspace.trigger('file-menu', menu, file, 'file-explorer');
 
         menu.showAtPosition({ x: event.clientX, y: event.clientY });
@@ -446,7 +528,6 @@ export class PortalsView extends ItemView {
     private showFolderContextMenu(event: MouseEvent, folder: TFolder) {
         const menu = new Menu();
 
-        // Manual items we keep
         menu.addItem(item => item
             .setTitle('New note')
             .setIcon('document')
@@ -467,7 +548,7 @@ export class PortalsView extends ItemView {
         menu.addItem(item => item
             .setTitle('Duplicate')
             .setIcon('copy')
-            .onClick(() => this.executeCommand('file-explorer:copy-folder'))); // fallback to command
+            .onClick(() => this.executeCommand('file-explorer:copy-folder')));
 
         menu.addItem(item => item
             .setTitle('Rename')
@@ -481,7 +562,6 @@ export class PortalsView extends ItemView {
 
         menu.addSeparator();
 
-        // Let Obsidian add its default items (Move, Copy path, etc.)
         this.app.workspace.trigger('file-menu', menu, folder, 'file-explorer');
 
         menu.showAtPosition({ x: event.clientX, y: event.clientY });
@@ -544,7 +624,6 @@ export class PortalsView extends ItemView {
         const confirmMsg = `Delete "${file.name}"?`;
         if (!confirm(confirmMsg)) return;
         try {
-            // Send to Obsidian .trash folder (local vault trash)
             await this.app.vault.trash(file, false);
             new Notice('File moved to trash');
             this.renderContent();
@@ -574,7 +653,6 @@ export class PortalsView extends ItemView {
         const confirmMsg = `Delete folder "${folder.name}" and all its contents?`;
         if (!confirm(confirmMsg)) return;
         try {
-            // Send to Obsidian .trash folder (local vault trash)
             await this.app.vault.trash(folder, false);
             new Notice('Folder moved to trash');
             this.renderContent();
@@ -704,7 +782,6 @@ export class PortalsView extends ItemView {
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
         summary.createSpan({ text: displayName });
 
-        // Make folder draggable
         summary.draggable = true;
         summary.addEventListener('dragstart', (e) => {
             e.dataTransfer?.setData('text/plain', folder.path);
@@ -719,13 +796,7 @@ export class PortalsView extends ItemView {
 
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
 
-        const sorted = folder.children.sort((a, b) => {
-            const aIsFolder = a instanceof TFolder;
-            const bIsFolder = b instanceof TFolder;
-            if (aIsFolder && !bIsFolder) return -1;
-            if (!aIsFolder && bIsFolder) return 1;
-            return a.name.localeCompare(b.name);
-        });
+        const sorted = this.sortFolderChildren(Array.from(folder.children));
 
         for (const child of sorted) {
             if (child instanceof TFolder) {
@@ -767,5 +838,47 @@ export class PortalsView extends ItemView {
             this.plugin.settings.openFolders = openFolders;
             await this.plugin.saveSettings();
         });
+    }
+
+    private sortFolderChildren(children: any[]): any[] {
+        const folders = children.filter(c => c instanceof TFolder);
+        const files = children.filter(c => c instanceof TFile);
+
+        // Folders are always sorted by name (ignoring sort settings)
+        folders.sort((a, b) => a.name.localeCompare(b.name));
+
+        // Files are sorted according to user settings
+        const fileSortFunc = (a: TFile, b: TFile) => {
+            let aVal: any, bVal: any;
+            switch (this.plugin.settings.sortBy) {
+                case 'name':
+                    aVal = a.name;
+                    bVal = b.name;
+                    break;
+                case 'created':
+                    aVal = a.stat.ctime;
+                    bVal = b.stat.ctime;
+                    break;
+                case 'modified':
+                    aVal = a.stat.mtime;
+                    bVal = b.stat.mtime;
+                    break;
+                default:
+                    aVal = a.name;
+                    bVal = b.name;
+            }
+            if (this.plugin.settings.sortOrder === 'asc') {
+                if (aVal < bVal) return -1;
+                if (aVal > bVal) return 1;
+                return 0;
+            } else {
+                if (aVal > bVal) return -1;
+                if (aVal < bVal) return 1;
+                return 0;
+            }
+        };
+        files.sort(fileSortFunc);
+
+        return [...folders, ...files];
     }
 }
