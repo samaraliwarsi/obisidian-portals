@@ -16,6 +16,7 @@ export interface SpacesSettings {
     showSubfolders: boolean;
     showTags: boolean;
     replaceFileExplorer: boolean;
+    pinVaultRoot: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -24,7 +25,8 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     selectedSpace: null,
     showSubfolders: true,
     showTags: true,
-    replaceFileExplorer: false
+    replaceFileExplorer: false,
+    pinVaultRoot: false
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -41,7 +43,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         containerEl.createEl('h2', { text: 'Portals Settings' });
 
-        // --- Replace file explorer toggle ---
+        // Replace file explorer toggle
         new Setting(containerEl)
             .setName('Replace file explorer in left sidebar')
             .setDesc('When enabled, the Portals pane will take the place of the default file explorer in the left sidebar on startup. The file explorer can still be opened via commands if needed.')
@@ -52,6 +54,96 @@ export class SpacesSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     new Notice('Changes will take effect after restarting Obsidian.');
                 }));
+
+        // ===== PIN VAULT ROOT =====
+        const pinSetting = new Setting(containerEl)
+            .setName('Pin vault root')
+            .setDesc('Show the vault root as the first tab (always on the left). You can customize its icon and color below.');
+
+        pinSetting.addToggle(toggle => toggle
+            .setValue(this.plugin.settings.pinVaultRoot)
+            .onChange(async (value) => {
+                this.plugin.settings.pinVaultRoot = value;
+                const rootPath = '/';
+                if (value) {
+                    // Find existing root space
+                    let root = this.plugin.settings.spaces.find(s => s.path === rootPath && s.type === 'folder');
+                    if (!root) {
+                        root = {
+                            path: rootPath,
+                            type: 'folder',
+                            icon: 'folder',
+                            color: 'transparent'
+                        };
+                        this.plugin.settings.spaces.unshift(root);
+                    } else {
+                        // Ensure it's at front
+                        const index = this.plugin.settings.spaces.indexOf(root);
+                        if (index > 0) {
+                            this.plugin.settings.spaces.splice(index, 1);
+                            this.plugin.settings.spaces.unshift(root);
+                        }
+                    }
+                    if (!this.plugin.settings.selectedSpace) {
+                        this.plugin.settings.selectedSpace = rootPath;
+                    }
+                } else {
+                    this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => !(s.path === rootPath && s.type === 'folder'));
+                    if (this.plugin.settings.selectedSpace === rootPath) {
+                        this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0]?.path || null;
+                    }
+                }
+                await this.plugin.saveSettings();
+                this.display(); // refresh to show/hide controls
+            }));
+
+        // If pin is enabled, show icon/color controls for the root space
+        if (this.plugin.settings.pinVaultRoot) {
+            const rootSpace = this.plugin.settings.spaces.find(s => s.path === '/' && s.type === 'folder');
+            if (rootSpace) {
+                const controlsDiv = pinSetting.controlEl.createDiv({ cls: 'portals-root-controls' });
+                controlsDiv.style.marginTop = '8px';
+                controlsDiv.style.display = 'flex';
+                controlsDiv.style.flexWrap = 'wrap';
+                controlsDiv.style.gap = '8px';
+                controlsDiv.style.alignItems = 'center';
+
+                // Icon picker button
+                const iconBtn = controlsDiv.createEl('button', { text: 'Choose icon' });
+                iconBtn.style.marginRight = '4px';
+                iconBtn.addEventListener('click', () => {
+                    new IconPickerModal(this.app, async (iconName) => {
+                        rootSpace.icon = iconName;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }).open();
+                });
+
+                // Show current icon name
+                controlsDiv.createSpan({ text: `Current icon: ${rootSpace.icon}`, cls: 'mod-cta' });
+
+                // Color input
+                const colorInput = controlsDiv.createEl('input', {
+                    type: 'text',
+                    placeholder: '#ff0000 or rgba(255,0,0,0.5)',
+                    value: rootSpace.color
+                });
+                colorInput.style.width = '150px';
+
+                const preview = controlsDiv.createEl('span', { cls: 'portals-color-preview' });
+                preview.style.width = '24px';
+                preview.style.height = '24px';
+                preview.style.borderRadius = '4px';
+                preview.style.border = '1px solid var(--background-modifier-border)';
+                preview.style.backgroundColor = rootSpace.color;
+
+                colorInput.addEventListener('input', async () => {
+                    rootSpace.color = colorInput.value;
+                    preview.style.backgroundColor = rootSpace.color;
+                    await this.plugin.saveSettings();
+                });
+            }
+        }
 
         // ========== FOLDERS SECTION ==========
         containerEl.createEl('h3', { text: 'Folders' });
@@ -67,13 +159,13 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        // Collect folders
+        // Collect folders, excluding the root (since it's handled by pin)
         const root = this.app.vault.getRoot();
         const folders: TFolder[] = [];
 
         if (this.plugin.settings.showSubfolders) {
             const walk = (f: TFolder) => {
-                folders.push(f);
+                if (f.path !== '/') folders.push(f);
                 for (const child of f.children) {
                     if (child instanceof TFolder) {
                         walk(child);
@@ -83,7 +175,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             walk(root);
         } else {
             for (const child of root.children) {
-                if (child instanceof TFolder) {
+                if (child instanceof TFolder && child.path !== '/') {
                     folders.push(child);
                 }
             }
@@ -97,7 +189,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
             const setting = new Setting(containerEl)
                 .setName(folder.name)
-                .setDesc(path || '/')
+                .setDesc(path)
                 .addToggle(toggle => {
                     toggle.setValue(!!existing).onChange(async (value) => {
                         if (value) {
@@ -107,7 +199,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                                 icon: 'folder',
                                 color: 'transparent'
                             });
-                            if (this.plugin.settings.spaces.length === 1) {
+                            if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {
                                 this.plugin.settings.selectedSpace = path;
                             }
                         } else {
@@ -160,7 +252,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                                     icon: 'tag',
                                     color: 'transparent'
                                 });
-                                if (this.plugin.settings.spaces.length === 1) {
+                                if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {
                                     this.plugin.settings.selectedSpace = tagName;
                                 }
                             } else {

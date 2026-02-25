@@ -4890,6 +4890,19 @@ details[open] > .folder-summary::before {
     vertical-align: middle;
 }
 
+.portals-tab-pinned {
+    /* Example: a left border to make it stand out */
+    border-left: 2px solid var(--interactive-accent);
+    /* Or a subtle background tint */
+    /* background-color: var(--background-secondary); */
+}
+
+/* Optional: make pinned tab slightly different even when inactive */
+.portals-tab-pinned:not(.is-active) {
+    opacity: 0.9;
+    filter: none; /* override any grayscale from inactive if needed */
+}
+
 .portals-container {
     padding-bottom: 0 !important;
 }

@@ -112,17 +112,30 @@ export class PortalsView extends ItemView {
 
             for (const space of spaces) {
                 let displayName = '';
+                const vaultName = this.app.vault.getName();
+
                 if (space.type === 'folder') {
-                    const folder = this.app.vault.getAbstractFileByPath(space.path);
-                    displayName = folder instanceof TFolder ? folder.name : space.path;
+                    if (space.path === '/') {
+                        displayName = vaultName; // root shows vault name
+                    } else {
+                        const folder = this.app.vault.getAbstractFileByPath(space.path);
+                        displayName = folder instanceof TFolder ? folder.name : space.path;
+                    }
                 } else {
                     displayName = '#' + space.path;
                 }
 
                 const tab = tabBar.createEl('div', { cls: 'portals-tab' });
+                if (space.path === '/') {
+                    tab.addClass('portals-tab-pinned'); // special class for pinned root
+                }
+
                 if (space.path === this.plugin.settings.selectedSpace) {
                     tab.addClass('is-active');
-                    tab.createSpan({ text: displayName }); // show name on active
+                    // For root, do NOT add text span – icon only
+                    if (space.path !== '/') {
+                        tab.createSpan({ text: displayName });
+                    }
                 } else {
                     // Use floating tooltip
                     tab.addEventListener('mouseenter', () => {
@@ -132,6 +145,7 @@ export class PortalsView extends ItemView {
                         this.hideTooltip(100);
                     });
                 }
+
                 tab.style.backgroundColor = space.color || 'transparent';
                 tab.dataset.path = space.path;
                 tab.dataset.type = space.type;
@@ -153,7 +167,7 @@ export class PortalsView extends ItemView {
                 });
             }
 
-            // Sortable with touch delay for mobile
+            // Sortable with touch delay for mobile, plus root pin enforcement
             new Sortable(tabBar, {
                 animation: 150,
                 delay: 400,
@@ -165,12 +179,27 @@ export class PortalsView extends ItemView {
                     const tabElements = tabBar.querySelectorAll('.portals-tab');
                     tabElements.forEach(el => {
                         const path = (el as HTMLElement).dataset.path;
-                        const type = (el as HTMLElement).dataset.type as 'folder' | 'tag';
-                        if (path && type) {
+                        const type = (el as HTMLElement).dataset.type;
+                        // Ensure type is valid
+                        if (path && (type === 'folder' || type === 'tag')) {
                             const found = this.plugin.settings.spaces.find(s => s.path === path && s.type === type);
-                            if (found) newOrder.push(found);
+                            if (found) {
+                                newOrder.push(found);
+                            }
                         }
                     });
+
+                    // If vault root is pinned, ensure it's first
+                    if (this.plugin.settings.pinVaultRoot) {
+                        const rootIndex = newOrder.findIndex(s => s.path === '/' && s.type === 'folder');
+                        if (rootIndex > 0) {
+                            const root = newOrder.splice(rootIndex, 1)[0];
+                            if (root) {
+                                newOrder.unshift(root);
+                            }
+                        }
+                    }
+
                     this.plugin.settings.spaces = newOrder;
                     await this.plugin.saveData(this.plugin.settings);
                     this.lastRenderHash = this.getSettingsHash();
@@ -419,7 +448,9 @@ export class PortalsView extends ItemView {
         const iconSpan = summary.createSpan({ cls: 'folder-icon' });
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
 
-        summary.createSpan({ text: folder.name });
+        // Use vault name for root folder
+        const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
+        summary.createSpan({ text: displayName });
 
         this.makeDropTarget(summary, folder);
 
