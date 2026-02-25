@@ -4925,32 +4925,7 @@ details[open] > .folder-summary::before {
 }
 
 /* Icon picker modal */
-.icon-picker-modal {
-    width: 700px;
-    max-width: 90vw;
-    height: 80vh;
-    display: flex;
-    flex-direction: column;
-}
 
-.icon-picker-main {
-    flex: 1;
-    min-height: 0;
-}
-
-.icon-picker-sidebar-title {
-    margin-top: 0;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
-
-.icon-picker-category {
-    transition: background-color 0.1s;
-}
-
-.icon-grid {
-    width: 100%;
-}
 
 /* Adjust icon size in your UI */
 .portals-tab-icon .ph,
