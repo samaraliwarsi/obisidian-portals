@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
@@ -101,7 +101,7 @@ export class PortalsView extends ItemView {
             if (!container) return;
             container.empty();
             container.addClass('portals-container');
-            container.style.position = 'relative'; // for absolute button
+            container.style.position = 'relative';
 
             const spaces = this.plugin.settings.spaces;
 
@@ -167,7 +167,6 @@ export class PortalsView extends ItemView {
                     this.hideTooltip(0);
                     this.plugin.settings.selectedSpace = space.path;
 
-                    // If the selected space is a folder, ensure its path is in openFolders
                     if (space.type === 'folder' && !this.plugin.settings.openFolders.includes(space.path)) {
                         this.plugin.settings.openFolders.push(space.path);
                     }
@@ -372,15 +371,28 @@ export class PortalsView extends ItemView {
                 this.renderContent();
             } catch (err) {
                 console.error('Drop error:', err);
+                const message = err instanceof Error ? err.message : String(err);
+                new Notice(`Failed to move file: ${message}`);
             }
         });
     }
 
-    private addCoreFileMenuItems(menu: Menu, file: TFile | TFolder) {
-        const exec = (commandId: string) => {
+    // Helper to safely execute commands and show errors
+    private safeExecute(commandId: string, successMessage?: string) {
+        try {
             (this.app as any).commands.executeCommandById(commandId);
-        };
+            if (successMessage) {
+                new Notice(successMessage);
+            }
+        } catch (err) {
+            console.error(`Command failed: ${commandId}`, err);
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Command failed: ${message}`);
+        }
+    }
 
+    private addCoreFileMenuItems(menu: Menu, file: TFile | TFolder) {
+        // Use safeExecute for all command calls
         if (file instanceof TFile) {
             menu.addItem(item => item
                 .setTitle('Open in new tab')
@@ -399,77 +411,77 @@ export class PortalsView extends ItemView {
                 .setTitle('Duplicate')
                 .setIcon('copy')
                 .onClick(() => {
-                    exec('file-explorer:copy-file');
+                    this.safeExecute('file-explorer:copy-file');
                 }));
             menu.addItem(item => item
                 .setTitle('Open version history')
                 .setIcon('history')
                 .onClick(() => {
-                    exec('file-explorer:open-file-history');
+                    this.safeExecute('file-explorer:open-file-history');
                 }));
             menu.addSeparator();
             menu.addItem(item => item
                 .setTitle('Rename')
                 .setIcon('pencil')
                 .onClick(() => {
-                    exec('file-explorer:rename-file');
+                    this.safeExecute('file-explorer:rename-file');
                 }));
             menu.addItem(item => item
                 .setTitle('Delete')
                 .setIcon('trash')
                 .onClick(() => {
-                    exec('file-explorer:delete-file');
+                    this.safeExecute('file-explorer:delete-file');
                 }));
         } else if (file instanceof TFolder) {
             menu.addItem(item => item
                 .setTitle('New note')
                 .setIcon('document')
                 .onClick(() => {
-                    exec('file-explorer:new-note');
+                    this.safeExecute('file-explorer:new-note');
                 }));
             menu.addItem(item => item
                 .setTitle('New folder')
                 .setIcon('folder')
                 .onClick(() => {
-                    exec('file-explorer:new-folder');
+                    this.safeExecute('file-explorer:new-folder');
                 }));
             menu.addItem(item => item
                 .setTitle('New canvas')
                 .setIcon('layout-dashboard')
                 .onClick(() => {
-                    exec('canvas:new-canvas');
+                    this.safeExecute('canvas:new-canvas');
                 }));
             menu.addSeparator();
             menu.addItem(item => item
                 .setTitle('Duplicate')
                 .setIcon('copy')
                 .onClick(() => {
-                    exec('file-explorer:copy-folder');
+                    this.safeExecute('file-explorer:copy-folder');
                 }));
             menu.addItem(item => item
                 .setTitle('Move folder to...')
                 .setIcon('folder-symlink')
                 .onClick(() => {
-                    exec('file-explorer:move-folder');
+                    this.safeExecute('file-explorer:move-folder');
                 }));
             menu.addSeparator();
             menu.addItem(item => item
                 .setTitle('Rename')
                 .setIcon('pencil')
                 .onClick(() => {
-                    exec('file-explorer:rename-folder');
+                    this.safeExecute('file-explorer:rename-folder');
                 }));
             menu.addItem(item => item
                 .setTitle('Delete')
                 .setIcon('trash')
                 .onClick(() => {
-                    exec('file-explorer:delete-folder');
+                    this.safeExecute('file-explorer:delete-folder');
                 }));
             menu.addItem(item => item
                 .setTitle('Search in folder')
                 .setIcon('search')
                 .onClick(() => {
-                    exec('global-search:open');
+                    this.safeExecute('global-search:open');
                 }));
         }
     }
