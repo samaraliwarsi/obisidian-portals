@@ -101,6 +101,8 @@ export class PortalsView extends ItemView {
             if (!container) return;
             container.empty();
             container.addClass('portals-container');
+            // Ensure container is positioned for absolute button
+            container.style.position = 'relative';
 
             const spaces = this.plugin.settings.spaces;
 
@@ -148,7 +150,6 @@ export class PortalsView extends ItemView {
                     });
                 }
 
-                // Apply tab color only if enabled
                 if (this.plugin.settings.tabColorEnabled) {
                     tab.style.background = space.color || 'transparent';
                 } else {
@@ -177,7 +178,6 @@ export class PortalsView extends ItemView {
                 });
             }
 
-            // Sortable with touch delay for mobile, plus root pin enforcement
             new Sortable(tabBar, {
                 animation: 150,
                 delay: 400,
@@ -214,7 +214,6 @@ export class PortalsView extends ItemView {
                 }
             });
 
-            // Scroll initial active tab into view
             setTimeout(() => {
                 const activeTab = tabBar.querySelector('.portals-tab.is-active');
                 if (activeTab) {
@@ -222,7 +221,6 @@ export class PortalsView extends ItemView {
                 }
             }, 0);
 
-            // Content area
             const contentArea = container.createEl('div', { cls: 'portals-content' });
 
             const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
@@ -244,15 +242,16 @@ export class PortalsView extends ItemView {
                 }
             }
 
-            // ===== COLLAPSE ALL BUTTON (FOOTER) =====
-            const footer = container.createEl('div', { cls: 'portals-footer' });
-            const collapseBtn = footer.createEl('button', { cls: 'portals-collapse-all-btn' });
-            collapseBtn.createEl('i', { cls: 'ph ph-folders' });
-            collapseBtn.createSpan({ text: ' Collapse all' });
+            // ===== FLOATING COLLAPSE BUTTON =====
+            const collapseBtn = container.createEl('button', { cls: 'portals-collapse-all-btn' });
+            collapseBtn.createEl('i', { cls: 'ph ph-stack' });
             collapseBtn.addEventListener('click', async () => {
-                this.plugin.settings.openFolders = [];
+                const currentSpacePath = this.plugin.settings.selectedSpace;
+                if (!currentSpacePath) return;
+
+                this.plugin.settings.openFolders = [currentSpacePath];
                 await this.plugin.saveSettings();
-                this.renderContent(); // re-render the content area only
+                this.renderContent();
             });
 
         } catch (e) {
@@ -499,7 +498,6 @@ export class PortalsView extends ItemView {
 
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
 
-        // Sort folders first, then files alphabetically
         const sorted = folder.children.sort((a, b) => {
             const aIsFolder = a instanceof TFolder;
             const bIsFolder = b instanceof TFolder;
