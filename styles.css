@@ -4649,14 +4649,29 @@
 
 /* ===== File Tree Adjustments ===== */
 
+/* Make file items and folder summaries full width and add horizontal padding */
+.file-item,
+.folder-summary {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 12px !important;   /* adjust as needed */
+    padding-right: 12px !important;  /* adjust as needed */
+}
+
+/* Ensure the hover background still works (Obsidian's default hover may already do this) */
+.file-item:hover,
+.folder-summary:hover {
+    background-color: var(--background-modifier-hover); /* or keep default */
+}
+
 /* Folder names – bold */
 .folder-summary span:last-child {
-    font-weight: 600 !important; /* bold – use 600 for semibold if preferred */
+    font-weight: 700 !important; /* bold – use 600 for semibold if preferred */
 }
 
 /* File names – regular */
 .file-item span:last-child {
-    font-weight: 300 !important; /* regular – use 300 for thin */
+    font-weight: 400 !important; /* regular – use 300 for thin */
 }
 
 /* Reduce font and icon size in file view */
@@ -4883,6 +4898,7 @@ details[open] > .folder-summary::before {
 
 .folder-details {
     margin-left: 0;
+    margin-bottom: 6px;
 }
 
 .folder-details[open] > .folder-summary {
