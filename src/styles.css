@@ -4649,20 +4649,30 @@
 
 /* ===== File Tree Adjustments ===== */
 
+/* Folder names – bold */
+.folder-summary span:last-child {
+    font-weight: 600 !important; /* bold – use 600 for semibold if preferred */
+}
+
+/* File names – regular */
+.file-item span:last-child {
+    font-weight: 300 !important; /* regular – use 300 for thin */
+}
+
 /* Reduce font and icon size in file view */
 .file-item,
 .folder-summary {
-    font-size: 13px; /* adjust as needed */
+    font-size: 15px; /* adjust as needed */
 }
 
 .file-icon .ph,
 .folder-icon .ph {
-    font-size: 13px; /* smaller than default 18px */
+    font-size: 15px; /* smaller than default 18px */
 }
 
 /* Add space between file list items */
 .file-item {
-    margin-bottom: 4px; /* or 4px, adjust to taste */
+    margin-bottom: 8px; /* or 4px, adjust to taste */
 }
 
 /* Make folder tree lines more visible: thin, dashed, slightly darker */
@@ -4857,7 +4867,11 @@ details[open] > .folder-summary::before {
 .portals-space-content > :last-child,
 .file-item:last-child,
 .folder-details:last-child {
-    margin-bottom: 0;
+    margin-bottom: 6px;
+}
+
+.folder-details:first-child {
+    margin-top: 0;
 }
 
 .portal-error {
@@ -4872,7 +4886,7 @@ details[open] > .folder-summary::before {
 }
 
 .folder-details[open] > .folder-summary {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .folder-summary {
@@ -4923,9 +4937,6 @@ details[open] > .folder-summary::before {
     background-color: var(--interactive-accent) !important;
     opacity: 0.7;
 }
-
-/* Icon picker modal */
-
 
 /* Adjust icon size in your UI */
 .portals-tab-icon .ph,
