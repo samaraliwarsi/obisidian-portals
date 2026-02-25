@@ -17,6 +17,8 @@ export interface SpacesSettings {
     showTags: boolean;
     replaceFileExplorer: boolean;
     pinVaultRoot: boolean;
+    filePaneColorStyle: 'gradient' | 'solid' | 'none';
+    tabColorEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -26,7 +28,9 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     showSubfolders: true,
     showTags: true,
     replaceFileExplorer: false,
-    pinVaultRoot: false
+    pinVaultRoot: false,
+    filePaneColorStyle: 'gradient',
+    tabColorEnabled: true
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -55,6 +59,33 @@ export class SpacesSettingTab extends PluginSettingTab {
                     new Notice('Changes will take effect after restarting Obsidian.');
                 }));
 
+        // ===== FILE PANE COLOR STYLE =====
+        new Setting(containerEl)
+            .setName('File pane color style')
+            .setDesc('How to apply per‑space colors to the file area.')
+            .addDropdown(dropdown => dropdown
+                .addOption('gradient', 'Gradient (25% solid → fade)')
+                .addOption('solid', 'Solid')
+                .addOption('none', 'No color (transparent)')
+                .setValue(this.plugin.settings.filePaneColorStyle)
+                .onChange(async (value: 'gradient' | 'solid' | 'none') => {
+                    this.plugin.settings.filePaneColorStyle = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        // ===== TAB COLORS TOGGLE =====
+        new Setting(containerEl)
+            .setName('Tab colors')
+            .setDesc('Show per‑space background colors on tabs.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.tabColorEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.tabColorEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
         // ===== PIN VAULT ROOT =====
         const pinSetting = new Setting(containerEl)
             .setName('Pin vault root')
@@ -66,7 +97,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                 this.plugin.settings.pinVaultRoot = value;
                 const rootPath = '/';
                 if (value) {
-                    // Find existing root space
                     let root = this.plugin.settings.spaces.find(s => s.path === rootPath && s.type === 'folder');
                     if (!root) {
                         root = {
@@ -77,7 +107,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                         };
                         this.plugin.settings.spaces.unshift(root);
                     } else {
-                        // Ensure it's at front
                         const index = this.plugin.settings.spaces.indexOf(root);
                         if (index > 0) {
                             this.plugin.settings.spaces.splice(index, 1);
@@ -94,10 +123,9 @@ export class SpacesSettingTab extends PluginSettingTab {
                     }
                 }
                 await this.plugin.saveSettings();
-                this.display(); // refresh to show/hide controls
+                this.display();
             }));
 
-        // If pin is enabled, show icon/color controls for the root space
         if (this.plugin.settings.pinVaultRoot) {
             const rootSpace = this.plugin.settings.spaces.find(s => s.path === '/' && s.type === 'folder');
             if (rootSpace) {
@@ -108,7 +136,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                 controlsDiv.style.gap = '8px';
                 controlsDiv.style.alignItems = 'center';
 
-                // Icon picker button
                 const iconBtn = controlsDiv.createEl('button', { text: 'Choose icon' });
                 iconBtn.style.marginRight = '4px';
                 iconBtn.addEventListener('click', () => {
@@ -119,10 +146,8 @@ export class SpacesSettingTab extends PluginSettingTab {
                     }).open();
                 });
 
-                // Show current icon name
                 controlsDiv.createSpan({ text: `Current icon: ${rootSpace.icon}`, cls: 'mod-cta' });
 
-                // Color input
                 const colorInput = controlsDiv.createEl('input', {
                     type: 'text',
                     placeholder: '#ff0000 or rgba(255,0,0,0.5)',
@@ -159,7 +184,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        // Collect folders, excluding the root (since it's handled by pin)
         const root = this.app.vault.getRoot();
         const folders: TFolder[] = [];
 

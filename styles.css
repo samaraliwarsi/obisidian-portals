@@ -4623,6 +4623,24 @@
 }
 /* ===== End of Phosphor Icon Definitions ===== */
 
+/* Default tab appearance when colors are disabled */
+.portals-tab {
+    background: var(--background-secondary-alt); /* subtle default background */
+    border: 1px solid transparent;
+    transition: background-color 0.1s, border-color 0.1s;
+}
+
+.portals-tab:hover {
+    background: var(--background-modifier-hover);
+}
+
+.portals-tab.is-active {
+    background: var(--background-secondary);
+    border-bottom-color: var(--interactive-accent);
+}
+
+/* When tab colors are enabled, the inline style will override background */
+
 /* File tree icons - use normal text color */
 .file-icon .ph,
 .folder-icon .ph {
@@ -4832,7 +4850,7 @@ details[open] > .folder-summary::before {
     min-height: 0;
     overflow-y: auto;
     border-radius: 6px;
-    padding: 8px 8px 0 8px;
+    padding: 8px;
     margin: 0;
 }
 

@@ -85,7 +85,9 @@ export class PortalsView extends ItemView {
         return JSON.stringify({
             spaces: s.spaces.map(sp => `${sp.type}:${sp.path}|${sp.icon}|${sp.color}`).join(','),
             openFolders: s.openFolders.join(','),
-            selectedSpace: s.selectedSpace
+            selectedSpace: s.selectedSpace,
+            filePaneColorStyle: s.filePaneColorStyle,
+            tabColorEnabled: s.tabColorEnabled
         });
     }
 
@@ -127,17 +129,18 @@ export class PortalsView extends ItemView {
 
                 const tab = tabBar.createEl('div', { cls: 'portals-tab' });
                 if (space.path === '/') {
-                    tab.addClass('portals-tab-pinned'); // special class for pinned root
+                    tab.addClass('portals-tab-pinned');
                 }
 
-                if (space.path === this.plugin.settings.selectedSpace) {
+                const isActive = (space.path === this.plugin.settings.selectedSpace);
+
+                if (isActive) {
                     tab.addClass('is-active');
-                    // For root, do NOT add text span – icon only
                     if (space.path !== '/') {
                         tab.createSpan({ text: displayName });
                     }
                 } else {
-                    // Use floating tooltip
+                    // Add tooltip listeners for inactive tabs
                     tab.addEventListener('mouseenter', () => {
                         this.showTooltip(displayName, tab);
                     });
@@ -146,7 +149,13 @@ export class PortalsView extends ItemView {
                     });
                 }
 
-                tab.style.backgroundColor = space.color || 'transparent';
+                // Apply tab color only if enabled
+                if (this.plugin.settings.tabColorEnabled) {
+                    tab.style.background = space.color || 'transparent';
+                } else {
+                    tab.style.background = '';
+                }
+
                 tab.dataset.path = space.path;
                 tab.dataset.type = space.type;
 
@@ -155,15 +164,22 @@ export class PortalsView extends ItemView {
                     iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
                 }
 
+                // Click handler – always re-render the whole view
                 tab.addEventListener('click', async () => {
-                    tabBar.querySelectorAll('.portals-tab').forEach(t => t.removeClass('is-active'));
-                    tab.addClass('is-active');
+                    // Hide any visible tooltip immediately
+                    this.hideTooltip(0);
+
                     this.plugin.settings.selectedSpace = space.path;
                     await this.plugin.saveSettings();
-                    this.renderContent();
-                    setTimeout(() => {
-                        tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }, 0);
+                    await this.render(); // full re-render ensures correct listeners
+
+                    // Scroll the newly active tab into view
+                    const newActiveTab = container.querySelector('.portals-tab.is-active');
+                    if (newActiveTab) {
+                        setTimeout(() => {
+                            newActiveTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        }, 0);
+                    }
                 });
             }
 
@@ -180,7 +196,6 @@ export class PortalsView extends ItemView {
                     tabElements.forEach(el => {
                         const path = (el as HTMLElement).dataset.path;
                         const type = (el as HTMLElement).dataset.type;
-                        // Ensure type is valid
                         if (path && (type === 'folder' || type === 'tag')) {
                             const found = this.plugin.settings.spaces.find(s => s.path === path && s.type === type);
                             if (found) {
@@ -189,7 +204,6 @@ export class PortalsView extends ItemView {
                         }
                     });
 
-                    // If vault root is pinned, ensure it's first
                     if (this.plugin.settings.pinVaultRoot) {
                         const rootIndex = newOrder.findIndex(s => s.path === '/' && s.type === 'folder');
                         if (rootIndex > 0) {
@@ -206,7 +220,7 @@ export class PortalsView extends ItemView {
                 }
             });
 
-            // Scroll initial active tab into view
+            // Scroll initial active tab into view after render
             setTimeout(() => {
                 const activeTab = tabBar.querySelector('.portals-tab.is-active');
                 if (activeTab) {
@@ -223,7 +237,7 @@ export class PortalsView extends ItemView {
                     const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
                     if (folder && folder instanceof TFolder) {
                         const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
-                        spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
+                        this.applySpaceBackground(spaceContent, selectedSpace.color);
                         this.makeDropTarget(spaceContent, folder);
                         this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
                     } else {
@@ -231,7 +245,7 @@ export class PortalsView extends ItemView {
                     }
                 } else {
                     const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
-                    spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
+                    this.applySpaceBackground(spaceContent, selectedSpace.color);
                     this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
                 }
             }
@@ -241,31 +255,25 @@ export class PortalsView extends ItemView {
         }
     }
 
+    // renderContent is no longer needed – we use full render only
+    // but keep it for backward compatibility if called elsewhere
     async renderContent() {
-        const container = this.containerEl.children[1] as HTMLElement;
-        const contentArea = container.querySelector('.portals-content');
-        if (!contentArea) return;
+        await this.render();
+    }
 
-        contentArea.empty();
+    private applySpaceBackground(el: HTMLElement, color: string | undefined) {
+        const bgColor = color || 'transparent';
+        const style = this.plugin.settings.filePaneColorStyle;
 
-        const spaces = this.plugin.settings.spaces;
-        const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
-        if (!selectedSpace) return;
+        if (style === 'none' || bgColor === 'transparent') {
+            el.style.background = 'transparent';
+            return;
+        }
 
-        if (selectedSpace.type === 'folder') {
-            const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
-            if (folder && folder instanceof TFolder) {
-                const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
-                spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
-                this.makeDropTarget(spaceContent, folder);
-                this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
-            } else {
-                contentArea.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
-            }
-        } else {
-            const spaceContent = contentArea.createEl('div', { cls: 'portals-space-content' });
-            spaceContent.style.backgroundColor = selectedSpace.color || 'transparent';
-            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
+        if (style === 'solid') {
+            el.style.background = bgColor;
+        } else if (style === 'gradient') {
+            el.style.background = `linear-gradient(to bottom, ${bgColor} 25%, transparent)`;
         }
     }
 
@@ -434,7 +442,7 @@ export class PortalsView extends ItemView {
         }
     }
 
-    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder-simple') {
+    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder') {
         const details = container.createEl('details');
         details.addClass('folder-details');
 
@@ -448,7 +456,6 @@ export class PortalsView extends ItemView {
         const iconSpan = summary.createSpan({ cls: 'folder-icon' });
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
 
-        // Use vault name for root folder
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
         summary.createSpan({ text: displayName });
 
@@ -474,7 +481,7 @@ export class PortalsView extends ItemView {
 
         for (const child of sorted) {
             if (child instanceof TFolder) {
-                this.buildFolderTree(child, childrenContainer, 'folder-simple');
+                this.buildFolderTree(child, childrenContainer, 'folder');
             } else if (child instanceof TFile) {
                 const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                 const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
