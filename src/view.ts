@@ -434,7 +434,7 @@ export class PortalsView extends ItemView {
         }
     }
 
-    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder') {
+    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder-simple') {
         const details = container.createEl('details');
         details.addClass('folder-details');
 
@@ -474,7 +474,7 @@ export class PortalsView extends ItemView {
 
         for (const child of sorted) {
             if (child instanceof TFolder) {
-                this.buildFolderTree(child, childrenContainer, 'folder');
+                this.buildFolderTree(child, childrenContainer, 'folder-simple');
             } else if (child instanceof TFile) {
                 const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                 const fileIcon = fileEl.createSpan({ cls: 'file-icon' });

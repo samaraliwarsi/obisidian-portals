@@ -72,7 +72,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                         root = {
                             path: rootPath,
                             type: 'folder',
-                            icon: 'folder',
+                            icon: 'folder-simple',
                             color: 'transparent'
                         };
                         this.plugin.settings.spaces.unshift(root);
@@ -196,7 +196,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                             this.plugin.settings.spaces.push({
                                 path,
                                 type: 'folder',
-                                icon: 'folder',
+                                icon: 'folder-simple',
                                 color: 'transparent'
                             });
                             if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {

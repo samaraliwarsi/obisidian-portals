@@ -4623,6 +4623,58 @@
 }
 /* ===== End of Phosphor Icon Definitions ===== */
 
+/* File tree icons - use normal text color */
+.file-icon .ph,
+.folder-icon .ph {
+    color: var(--text-normal);
+}
+
+/* ===== File Tree Adjustments ===== */
+
+/* Reduce font and icon size in file view */
+.file-item,
+.folder-summary {
+    font-size: 13px; /* adjust as needed */
+}
+
+.file-icon .ph,
+.folder-icon .ph {
+    font-size: 13px; /* smaller than default 18px */
+}
+
+/* Add space between file list items */
+.file-item {
+    margin-bottom: 4px; /* or 4px, adjust to taste */
+}
+
+/* Make folder tree lines more visible: thin, dashed, slightly darker */
+.folder-children {
+    border-left: 1px dashed var(--interactive-accent); /* already thin, maybe keep */
+    /* optionally use a more contrasting color, but keep with theme */
+}
+
+/* Prevent file/folder names from wrapping */
+.file-item span:last-child,
+.folder-summary span:last-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* adds "..." if needed */
+}
+
+/* Change expand/collapse marker from ▶ to phosphor caret-right*/
+.folder-summary::before {
+    font-family: "Phosphor" !important;
+    content: "\e13a" !important; /* ph-caret-right */
+    font-size: 0.9em;
+    transition: transform 0.15s;
+    /* remove any rotation transform from previous rule */
+    transform: rotate(0deg) !important;
+}
+
+details[open] > .folder-summary::before {
+    content: "\e136" !important; /* ph-caret-down */
+}
+
 
 /* ===== Your Plugin's Custom UI Styles ===== */
 .portals-container {
