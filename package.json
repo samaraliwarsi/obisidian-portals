@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-sample-plugin",
+  "name": "obsidian-portals",
   "version": "1.0.0",
-  "description": "Portals plugin for Obsidian",
+  "description": "Obsidian plugin to create pinned folder trees for easier navigation",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -10,7 +10,7 @@
     "lint": "eslint ."
   },
   "keywords": [],
-  "author": "Your Name",
+  "author": "samaraliwarsi",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^16.11.6",
