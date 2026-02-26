@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Platform } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
@@ -474,13 +474,17 @@ export class PortalsView extends ItemView {
             const fileEl = container.createDiv({ cls: 'file-item' });
             const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
             fileIcon.createEl('i', { cls: 'ph ph-file' });
-            fileEl.createSpan({ text: this.getDisplayName(file) }); // <-- display without .md
+            fileEl.createSpan({ text: this.getDisplayName(file) });
 
             fileEl.dataset.path = file.path;
-            fileEl.draggable = true;
-            fileEl.addEventListener('dragstart', (e) => {
-                e.dataTransfer?.setData('text/plain', file.path);
-            });
+
+            // Disable drag on mobile
+            if (!Platform.isMobile) {
+                fileEl.draggable = true;
+                fileEl.addEventListener('dragstart', (e) => {
+                    e.dataTransfer?.setData('text/plain', file.path);
+                });
+            }
 
             fileEl.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -614,11 +618,9 @@ export class PortalsView extends ItemView {
 
     // ===== RENAME FUNCTIONS (show base name only, preserve extension) =====
     private async renameFile(file: TFile) {
-        // For rename, we always show the base name (without extension)
         const displayName = file.basename;
         new InputModal(this.app, 'Rename file', 'New name', displayName, async (newBase) => {
             if (!newBase || newBase === displayName) return;
-            // Reattach the original extension
             const newName = newBase + '.' + file.extension;
             const dir = file.parent?.path || '';
             const newPath = `${dir}/${newName}`;
@@ -796,10 +798,13 @@ export class PortalsView extends ItemView {
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
         summary.createSpan({ text: displayName });
 
-        summary.draggable = true;
-        summary.addEventListener('dragstart', (e) => {
-            e.dataTransfer?.setData('text/plain', folder.path);
-        });
+        // Disable drag on mobile
+        if (!Platform.isMobile) {
+            summary.draggable = true;
+            summary.addEventListener('dragstart', (e) => {
+                e.dataTransfer?.setData('text/plain', folder.path);
+            });
+        }
 
         this.makeDropTarget(summary, folder, true);
 
@@ -819,13 +824,17 @@ export class PortalsView extends ItemView {
                 const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                 const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
                 fileIcon.createEl('i', { cls: 'ph ph-file' });
-                fileEl.createSpan({ text: this.getDisplayName(child) }); // <-- display without .md
+                fileEl.createSpan({ text: this.getDisplayName(child) });
 
                 fileEl.dataset.path = child.path;
-                fileEl.draggable = true;
-                fileEl.addEventListener('dragstart', (e) => {
-                    e.dataTransfer?.setData('text/plain', child.path);
-                });
+
+                // Disable drag on mobile
+                if (!Platform.isMobile) {
+                    fileEl.draggable = true;
+                    fileEl.addEventListener('dragstart', (e) => {
+                        e.dataTransfer?.setData('text/plain', child.path);
+                    });
+                }
 
                 fileEl.addEventListener('click', (e) => {
                     e.stopPropagation();
