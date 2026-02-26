@@ -1,90 +1,156 @@
-# Obsidian Sample Plugin
+# Portals for Obsidian
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Portals enhances your Obsidian file navigation by letting you pin any folder or tag as a **customizable tab**, a Portal into your selected folder trees using focussed tabs. Add icons, background colors, gradients and rearrange them to suit your workflow.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+# Screenshots
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+![Vault Portal in dark theme](screenshots/Vault_portal_dark.png)
+![Portal Tab in Light Theme](screenshots/Portal_tab_light.png)
+![Color gradient Portal in Dark Theme](screenshots/Gradient_portal_dark.png)
+![Color Portal in Light Theme](screenshots/Color_portal_light.png)
+![Portal Settings Page 1](screenshots/Portal_settings_1.png)
+![Portal Settings Page 2](screenshots/Portal_settings_2.png)
 
-## First time developing plugins?
+## ✨ Features
 
-Quick starting guide for new plugin devs:
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
 
-## Releasing new releases
+- 📌 **Pin any folder or tag** – Turn your most‑used folders and tags into tabs at the top of the file pane.
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+- 🎨 **Custom icons & colors** – Choose from hundreds of icons from the Phosphor set and set any background color with an opacity slider and an option to use gradients. Control the colors of Tabs and File Pane separately.
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+- 📂 **Full file tree** – Expand/collapse folders, drag‑and‑drop files and folders to move them.
 
-## Adding your plugin to the community plugin list
+- 🖱️ **Complete context menus** – Right‑click files or folders to get the same menu as the default file explorer.
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+- 🧹 **Floating action buttons** – Quick‑create notes, folders, collapse all subfolders and change sort order.
 
-## How to use
+- 🔄 **Native Sorting** – Choose how files are sorted (by name, creation time, or modification time, ascending/descending). Your choice is saved between sessions.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+- 🗑️ **Safe deletion** – Files are moved to Obsidian’s  .trash  folder – no permanent deletion without confirmation. Works well with Trash Explorer Plugin
 
-## Manually installing the plugin
+- 📱 **Mobile friendly** – Responsive design with a floating button stack that works on small screens. Tested on android as of now.
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+- 💾 **Export/Import settings** – Backup your tab configuration or transfer it to another vault.
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+  
 
-## Funding URL
+## ⚙️ Installation
 
-You can include funding URLs where people who use your plugin can financially support it.
+### Manual installation
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+1. Download the latest release from the [releases page](https://github.com/samaraliwarsi/obsidian-portals/releases).
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+2. Extract the files into your vault’s `.obsidian/plugins/obsidian-portals/` folder.
+
+3. Enable the plugin in Obsidian settings.
+
+  
+
+## 🚀 Usage
+
+  
+
+### Creating a tab
+
+- Open **Settings → Portals**.
+
+- Under **Folders** or **Tags**, toggle on any folder/tag you want to appear as a tab. For subfolders and tags to show up, you have to enable that toggle in settings. By default the plugin works with root folders inside the vault.
+
+- Optionally, click **Choose icon** to pick an icon from the Phosphor library, and use the color picker + opacity slider to set a background color.
+
+- Option to have the entire Vault as a Portal Tab. Note that this stays pinned to the left of Tab Bar.
+
+  
+
+### Managing tabs
+
+- Drag tabs left/right to reorder.
+
+- The active tab is highlighted and shows the folder/tag name.
+
+- Hover over an inactive tab to see a tooltip with its name.
+
+  
+
+### Floating action buttons
+
+Four buttons appear at the bottom‑left of the file pane:
+
+- **New note** (`+`) – creates an untitled note in the current folder tab.
+
+- **New folder** (`📁`) – creates a new folder in the current folder tab.
+
+- **Sort** (`↕️`) – opens a menu to change the sort order (Name A→Z / Z→A, Created oldest/newest, Modified oldest/newest). The choice is saved.
+
+- **Collapse all** (`⤒`) – collapses all subfolders while keeping the current tab’s root folder expanded.
+
+  
+
+### Right‑click context menu
+
+Right‑click any file or folder to see the exact same menu as Obsidian’s default file explorer. All native actions (Open in new tab, Duplicate, Rename, Delete, Move to…, Copy path, etc.) are available, and any other plugins that add menu items will also appear.
+
+  
+
+### Drag & drop
+
+- Drag files onto folders to move them.
+
+- Drag folders onto other folders to move them (will not move a folder into itself).
+
+- Dropping onto the background of a tab moves the item into that tab’s root folder.
+
+  
+
+## ⚙️ Settings
+
+  
+
+- **Replace file explorer** – If enabled, Portals will open in the left sidebar on startup (the original file explorer can still be opened via commands).
+
+- **File pane color style** – Choose how tab background colors are applied: **Gradient** (fades from solid to transparent), **Solid**, or **None**.
+
+- **Tab colors** – Toggle whether tabs use their assigned background color.
+
+- **Pin vault root** – Pins the vault root as the first tab (always on the left). You can customize its icon and color separately.
+
+- **Sort defaults** – Choose the default sort method and order for new vaults (users can still change it via the floating button).
+
+- **Backup / Restore** – Export your entire settings to a JSON file, or import from a previously saved file.
+
+  
+
+## 🧑‍💻 Development
+
+  
+
+Clone the repository, install dependencies, and build:
+
+  
+
+```bash
+
+git clone https://github.com/samaraliwarsi/obsidian-portals.git
+
+cd obsidian-portals
+
+npm install
+
+npm run build
+
 ```
 
-If you have multiple URLs, you can also do:
+  
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+The built `main.js` and `styles.css` will be in the root folder. Copy them into your test vault’s `.obsidian/plugins/obsidian-portals/` directory.
 
-## API Documentation
+  
 
-See https://docs.obsidian.md
+## 📝 License
+
+
+This project is licensed under the 0BSD License. See the [LICENSE](LICENSE) file for details.
+  
+
+---
