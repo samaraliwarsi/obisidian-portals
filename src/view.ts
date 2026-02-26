@@ -208,11 +208,19 @@ export class PortalsView extends ItemView {
                     });
                 }
 
-                if (this.plugin.settings.tabColorEnabled) {
-                    tab.style.background = space.color || 'transparent';
+                // Apply tab color only to active tab's bottom border
+                if (this.plugin.settings.tabColorEnabled && space.color && space.color !== 'transparent') {
+                    if (isActive) {
+                        tab.style.borderBottomColor = space.color;
+                    } else {
+                        tab.style.borderBottomColor = ''; // ensure no leftover inline border
+                    }
                 } else {
-                    tab.style.background = '';
+                    tab.style.borderBottomColor = '';
                 }
+
+                // No background set inline – CSS will handle inactive tabs
+                tab.style.background = '';
 
                 tab.dataset.path = space.path;
                 tab.dataset.type = space.type;

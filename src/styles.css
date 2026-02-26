@@ -4623,23 +4623,52 @@
 }
 /* ===== End of Phosphor Icon Definitions ===== */
 
-/* Default tab appearance when colors are disabled */
+/* ===== TABS – unified style ===== */
 .portals-tab {
-    background: var(--background-secondary-alt); /* subtle default background */
-    border: 1px solid transparent;
-    transition: background-color 0.1s, border-color 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    white-space: nowrap;
+    border: none;
+    border-bottom: 2px solid transparent;  /* transparent by default, color set inline for active tab */
+    background: transparent;                /* no background for inactive tabs */
+    color: var(--text-muted);
+    transition: background-color 0.1s, border-color 0.1s, color 0.1s;
+    user-select: none;
+    flex-shrink: 0;
+    position: relative;
+    filter: none;
 }
 
 .portals-tab:hover {
-    background: var(--background-modifier-hover);
+    background: rgba(128, 128, 128, 0.15);  /* consistent overlay – works on any background */
+    color: var(--text-normal);
 }
 
 .portals-tab.is-active {
-    background: var(--background-secondary);
-    border-bottom-color: var(--interactive-accent);
+    background: transparent;
+    color: var(--text-normal);
+    border-bottom-color: var(--interactive-accent); /* fallback if no inline color */
 }
 
-/* When tab colors are enabled, the inline style will override background */
+/* Icons inside tabs – keep consistent size */
+.portals-tab-icon {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.portals-tab-icon i {
+    font-size: 18px;
+    vertical-align: middle;
+}
+/* ===== END OF TABS – unified style ===== */
 
 /* File tree icons - use normal text color */
 .file-icon .ph,
@@ -4788,6 +4817,7 @@ details[open] > .folder-summary::before {
     border-bottom: 1px solid var(--background-modifier-border);
     padding-bottom: 15px;
     scrollbar-width: auto;
+    margin-top: 8px;
 }
 
 .portals-tab-bar::-webkit-scrollbar {
@@ -4807,35 +4837,6 @@ details[open] > .folder-summary::before {
     background: var(--text-muted);
 }
 
-.portals-tab {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-    white-space: nowrap;
-    transition: background-color 0.1s, filter 0.1s;
-    border: none;
-    user-select: none;
-    -webkit-user-select: none;
-    filter: grayscale(100%) opacity(0.4);
-    border-bottom: 2px solid transparent;
-    flex-shrink: 0;
-    position: relative;
-}
-
-.portals-tab:hover {
-    background-color: var(--background-modifier-hover);
-    filter: grayscale(0%) opacity(1);
-}
-
-.portals-tab.is-active {
-    filter: grayscale(0%) opacity(1);
-    background-color: transparent;
-    border-bottom: 2px solid var(--interactive-accent);
-}
 
 /* Mobile */
 @media (max-width: 768px) {
@@ -4856,6 +4857,7 @@ details[open] > .folder-summary::before {
 
   .portals-tab-bar {
     padding-bottom: 20px;
+    margin-top: 15px;
   }
 
   .portals-tab-bar::-webkit-scrollbar {
