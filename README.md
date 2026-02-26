@@ -240,9 +240,6 @@ npm run build
   
 
 The built `main.js` and `styles.css` will be in the root folder. Copy them into your test vault’s `.obsidian/plugins/obsidian-portals/` directory.
-
-  
-
   
 
 ## 📝 License
@@ -253,5 +250,9 @@ The built `main.js` and `styles.css` will be in the root folder. Copy them into 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
   
+
+---
+
+_Built with assistance from AI (vibe coded)._
 
 ---
