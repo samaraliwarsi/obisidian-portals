@@ -4,12 +4,12 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 
 # Screenshots
 
-![Vault Portal in dark theme](screenshots/Vault_portal_dark.png)
-![Portal Tab in Light Theme](screenshots/Portal_tab_light.png)
-![Color gradient Portal in Dark Theme](screenshots/Gradient_portal_dark.png)
-![Color Portal in Light Theme](screenshots/Color_portal_light.png)
-![Portal Settings Page 1](screenshots/Portal_settings_1.png)
-![Portal Settings Page 2](screenshots/Portal_settings_2.png)
+![Vault Portal in dark theme](Screenshots/Vault_portal_dark.png)
+![Portal Tab in Light Theme](Screenshots/Portal_tab_light.png)
+![Color gradient Portal in Dark Theme](Screenshots/Gradient_portal_dark.png)
+![Color Portal in Light Theme](Screenshots/Color_portal_light.png)
+![Portal Settings Page 1](Screenshots/Portal_settings_1.png)
+![Portal Settings Page 2](Screenshots/Portal_settings_2.png)
 
 ## ✨ Features
 
