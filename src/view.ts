@@ -348,7 +348,7 @@ export class PortalsView extends ItemView {
                 await this.newFolderInFolder(folder);
             });
 
-            // Sort button – fixed event type
+            // Sort button
             createFloatingButton('caret-circle-up-down', 'Sort', 60, (e: MouseEvent) => {
                 const menu = new Menu();
                 const setSort = (by: 'name' | 'created' | 'modified', order: 'asc' | 'desc') => {
@@ -449,6 +449,14 @@ export class PortalsView extends ItemView {
         }
     }
 
+    // Helper to get display name (hide .md extension)
+    private getDisplayName(file: TFile): string {
+        if (file.extension === 'md') {
+            return file.basename;
+        }
+        return file.name;
+    }
+
     private buildTagSpace(tagName: string, container: HTMLElement, iconName: string) {
         const tag = '#' + tagName;
         const allFiles = this.app.vault.getMarkdownFiles();
@@ -466,7 +474,7 @@ export class PortalsView extends ItemView {
             const fileEl = container.createDiv({ cls: 'file-item' });
             const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
             fileIcon.createEl('i', { cls: 'ph ph-file' });
-            fileEl.createSpan({ text: file.name });
+            fileEl.createSpan({ text: this.getDisplayName(file) }); // <-- display without .md
 
             fileEl.dataset.path = file.path;
             fileEl.draggable = true;
@@ -604,9 +612,14 @@ export class PortalsView extends ItemView {
         return candidate;
     }
 
+    // ===== RENAME FUNCTIONS (show base name only, preserve extension) =====
     private async renameFile(file: TFile) {
-        new InputModal(this.app, 'Rename file', 'New name', file.name, async (newName) => {
-            if (!newName || newName === file.name) return;
+        // For rename, we always show the base name (without extension)
+        const displayName = file.basename;
+        new InputModal(this.app, 'Rename file', 'New name', displayName, async (newBase) => {
+            if (!newBase || newBase === displayName) return;
+            // Reattach the original extension
+            const newName = newBase + '.' + file.extension;
             const dir = file.parent?.path || '';
             const newPath = `${dir}/${newName}`;
             try {
@@ -618,19 +631,6 @@ export class PortalsView extends ItemView {
                 new Notice(`Rename failed: ${message}`);
             }
         }).open();
-    }
-
-    private async deleteFile(file: TFile) {
-        const confirmMsg = `Delete "${file.name}"?`;
-        if (!confirm(confirmMsg)) return;
-        try {
-            await this.app.vault.trash(file, false);
-            new Notice('File moved to trash');
-            this.renderContent();
-        } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Delete failed: ${message}`);
-        }
     }
 
     private async renameFolder(folder: TFolder) {
@@ -647,6 +647,20 @@ export class PortalsView extends ItemView {
                 new Notice(`Rename failed: ${message}`);
             }
         }).open();
+    }
+    // ===============================================================
+
+    private async deleteFile(file: TFile) {
+        const confirmMsg = `Delete "${file.name}"?`;
+        if (!confirm(confirmMsg)) return;
+        try {
+            await this.app.vault.trash(file, false);
+            new Notice('File moved to trash');
+            this.renderContent();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Delete failed: ${message}`);
+        }
     }
 
     private async deleteFolder(folder: TFolder) {
@@ -805,7 +819,7 @@ export class PortalsView extends ItemView {
                 const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                 const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
                 fileIcon.createEl('i', { cls: 'ph ph-file' });
-                fileEl.createSpan({ text: child.name });
+                fileEl.createSpan({ text: this.getDisplayName(child) }); // <-- display without .md
 
                 fileEl.dataset.path = child.path;
                 fileEl.draggable = true;
