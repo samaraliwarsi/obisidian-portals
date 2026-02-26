@@ -372,6 +372,25 @@ export class SpacesSettingTab extends PluginSettingTab {
             .addButton(button => button
                 .setButtonText('Import')
                 .onClick(() => this.importSettings()));
+
+        // ========== MAINTENANCE ==========
+        containerEl.createEl('h3', { text: 'Maintenance' });
+
+        new Setting(containerEl)
+            .setName('Clean up dead spaces')
+            .setDesc('Remove portal tabs for folders or tags that no longer exist. This cannot be undone.')
+            .addButton(button => button
+                .setButtonText('Clean now')
+                .setWarning()
+                .onClick(async () => {
+                    const removed = await this.plugin.cleanupDeadSpaces();
+                    if (removed > 0) {
+                        new Notice(`Removed ${removed} dead space(s)`);
+                        this.display(); // refresh settings view
+                    } else {
+                        new Notice('No dead spaces found');
+                    }
+                }));
     }
 
     private addSpaceControls(setting: Setting, space: SpaceConfig) {

@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Plugin, TFolder } from 'obsidian';
 import { PortalsView, VIEW_TYPE_PORTALS } from './view';
 import { SpacesSettings, DEFAULT_SETTINGS, SpacesSettingTab } from './settings';
 
@@ -92,5 +92,43 @@ export default class PortalsPlugin extends Plugin {
         }
         // Make the Portals leaf active (brings it to front)
         workspace.revealLeaf(portalsLeaf);
+    }
+
+    // ========== MANUAL CLEANUP ==========
+    async cleanupDeadSpaces(): Promise<number> {
+        // Get all existing folder paths
+        const allFiles = this.app.vault.getAllLoadedFiles();
+        const existingFolders = allFiles.filter(f => f instanceof TFolder).map(f => f.path);
+
+        // Get all existing tags (as strings with '#')
+        const tags = Object.keys((this.app.metadataCache as any).getTags()); // e.g. ['#tag1', '#tag2']
+
+        // Filter spaces
+        const beforeCount = this.settings.spaces.length;
+        this.settings.spaces = this.settings.spaces.filter(space => {
+            if (space.type === 'folder') {
+                return existingFolders.includes(space.path);
+            } else if (space.type === 'tag') {
+                return tags.includes('#' + space.path);
+            }
+            return false;
+        });
+
+        // Clean up openFolders
+        this.settings.openFolders = this.settings.openFolders.filter(path => existingFolders.includes(path));
+
+        // Adjust selected space if it's gone
+        if (this.settings.selectedSpace) {
+            const stillExists = this.settings.spaces.some(s => s.path === this.settings.selectedSpace);
+            if (!stillExists) {
+                this.settings.selectedSpace = this.settings.spaces[0]?.path || null;
+            }
+        }
+
+        // Save if anything changed
+        if (beforeCount !== this.settings.spaces.length) {
+            await this.saveSettings();
+        }
+        return beforeCount - this.settings.spaces.length; // number removed
     }
 }
