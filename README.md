@@ -66,8 +66,6 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 
   
 
-  
-
 ## ⚙️ Installation
 
 > [!CAUTION]
