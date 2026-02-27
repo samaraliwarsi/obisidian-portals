@@ -6,7 +6,7 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 
   
 
-# Screenshots
+## Screenshots
 
   
 
@@ -70,6 +70,9 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 
 ## ⚙️ Installation
 
+> [!CAUTION]
+> Before updating plugin version, **export your current settings** using the Backup/Restore option in Portals settings. This ensures you can restore your configuration if anything goes wrong.
+
 ### Using BRAT (Beta Reviewers Auto-update Tester)
 
 1. Install the **BRAT** plugin from the Obsidian community plugins (if you haven’t already).
@@ -81,10 +84,7 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 4. Click **Add Plugin** – BRAT will download and enable the latest release.
 
 
-
 ### Manual installation
-
-  
 
 1. Download the latest release from the [releases page](https://github.com/samaraliwarsi/obsidian-portals/releases).
 

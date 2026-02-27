@@ -190,6 +190,11 @@ export class PortalsView extends ItemView {
                 const tab = tabBar.createEl('div', { cls: 'portals-tab' });
                 if (space.path === '/') {
                     tab.addClass('portals-tab-pinned');
+                    if (this.plugin.settings.tabColorEnabled && space.color && space.color !== 'transparent') {
+                        tab.style.borderLeft = `2px solid ${space.color}`;
+                    } else {
+                        tab.style.borderLeft = '';
+                    }
                 }
 
                 const isActive = (space.path === this.plugin.settings.selectedSpace);
