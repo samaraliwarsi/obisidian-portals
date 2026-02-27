@@ -867,7 +867,7 @@ export class PortalsView extends ItemView {
                 openFolders = openFolders.filter(p => p !== path);
             }
             this.plugin.settings.openFolders = openFolders;
-            await this.plugin.saveSettings();
+            await this.plugin.saveData(this.plugin.settings);
         });
     }
 

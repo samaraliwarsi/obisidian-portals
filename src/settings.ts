@@ -47,6 +47,10 @@ export class SpacesSettingTab extends PluginSettingTab {
 
     display(): void {
         const { containerEl } = this;
+
+        // 1. Save current scroll position
+        const scrollTop = containerEl.scrollTop;
+
         containerEl.empty();
 
         // Main header
@@ -391,6 +395,12 @@ export class SpacesSettingTab extends PluginSettingTab {
                         new Notice('No dead spaces found');
                     }
                 }));
+
+        // 2. Restore scroll position after UI rebuild
+        setTimeout(() => {
+            const maxScroll = containerEl.scrollHeight - containerEl.clientHeight;
+            containerEl.scrollTop = Math.min(scrollTop, maxScroll);
+        }, 0);
     }
 
     private addSpaceControls(setting: Setting, space: SpaceConfig) {
