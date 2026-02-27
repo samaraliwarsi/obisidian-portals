@@ -200,12 +200,14 @@ export class PortalsView extends ItemView {
                         tab.createSpan({ text: displayName });
                     }
                 } else {
-                    tab.addEventListener('mouseenter', () => {
-                        this.showTooltip(displayName, tab);
-                    });
-                    tab.addEventListener('mouseleave', () => {
-                        this.hideTooltip(100);
-                    });
+                    if (!Platform.isMobile) {
+                        tab.addEventListener('mouseenter', () => {
+                            this.showTooltip(displayName, tab);
+                        });
+                        tab.addEventListener('mouseleave', () => {
+                            this.hideTooltip(100);
+                        });
+                    }
                 }
 
                 // Apply tab color only to active tab's bottom border
@@ -320,8 +322,10 @@ export class PortalsView extends ItemView {
                 const btn = container.createEl('button', { cls: 'portals-floating-btn' });
                 btn.style.bottom = bottom + 'px';
                 btn.createEl('i', { cls: `ph ph-${icon}` });
-                btn.addEventListener('mouseenter', () => this.showTooltip(tooltip, btn));
-                btn.addEventListener('mouseleave', () => this.hideTooltip(100));
+                if (!Platform.isMobile) {
+                    btn.addEventListener('mouseenter', () => this.showTooltip(tooltip, btn));
+                    btn.addEventListener('mouseleave', () => this.hideTooltip(100));
+                }
                 btn.addEventListener('click', onClick);
                 return btn;
             };
@@ -395,12 +399,7 @@ export class PortalsView extends ItemView {
             });
 
             // Collapse button
-            const collapseBtn = container.createEl('button', { cls: 'portals-floating-btn' });
-            collapseBtn.style.bottom = '16px';
-            collapseBtn.createEl('i', { cls: 'ph ph-stack' });
-            collapseBtn.addEventListener('mouseenter', () => this.showTooltip('Collapse all', collapseBtn));
-            collapseBtn.addEventListener('mouseleave', () => this.hideTooltip(100));
-            collapseBtn.addEventListener('click', async () => {
+            createFloatingButton('stack', 'Collapse all', 16, async () => {
                 const currentSpacePath = this.plugin.settings.selectedSpace;
                 if (!currentSpacePath) return;
                 this.plugin.settings.openFolders = [currentSpacePath];

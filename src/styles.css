@@ -4908,8 +4908,9 @@ details[open] > .folder-summary::before {
 }
 
 /*Tooltip for inactive tabs*/
-.portals-tab[data-tooltip]:hover::after {
-   content: attr(data-tooltip);
+@media (hover: hover) {
+  .portals-tab[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
     position: absolute;
     top: 100%;           /* below the tab */
     left: 50%;
@@ -4924,6 +4925,7 @@ details[open] > .folder-summary::before {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     pointer-events: none;
+  }
 }
 
 .portals-tab-icon,
