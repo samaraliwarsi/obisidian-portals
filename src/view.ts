@@ -53,6 +53,7 @@ export class PortalsView extends ItemView {
     private tooltipEl: HTMLElement | null = null;
     private tooltipTimeout: number | null = null;
     private vaultEventRef: (() => void) | null = null;
+    private renaming: boolean = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -78,11 +79,19 @@ export class PortalsView extends ItemView {
         const deleteRef = this.app.vault.on('delete', () => this.renderContent());
         const createRef = this.app.vault.on('create', () => this.renderContent());
 
+
         this.vaultEventRef = () => {
             this.app.vault.offref(renameRef);
             this.app.vault.offref(deleteRef);
             this.app.vault.offref(createRef);
         };
+
+        this.registerEvent(this.app.workspace.on('file-open', () => {
+            if (!this.renaming) this.renderContent();
+        }));
+        this.registerEvent(this.app.workspace.on('layout-change', () => {
+            if (!this.renaming) this.renderContent();
+        }));
     }
 
     async onClose() {
@@ -490,6 +499,10 @@ export class PortalsView extends ItemView {
 
             fileEl.dataset.path = file.path;
 
+        if (this.isFileOpen(file)) {
+            fileEl.createSpan({ cls: 'open-dot' });
+        }
+
             // Disable drag on mobile
             if (!Platform.isMobile) {
                 fileEl.draggable = true;
@@ -505,14 +518,14 @@ export class PortalsView extends ItemView {
 
             fileEl.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                this.showFileContextMenu(e, file);
+                this.showFileContextMenu(e, file, fileEl);
             });
         }
     }
 
     // ========== CONTEXT MENU ==========
 
-    private showFileContextMenu(event: MouseEvent, file: TFile) {
+    private showFileContextMenu(event: MouseEvent, file: TFile, fileEl: HTMLElement) {
         const menu = new Menu();
 
         menu.addItem(item => item
@@ -535,7 +548,7 @@ export class PortalsView extends ItemView {
         menu.addItem(item => item
             .setTitle('Rename')
             .setIcon('pencil')
-            .onClick(() => this.renameFile(file)));
+            .onClick(() => this.startRenameFile(file, fileEl)));
 
         menu.addItem(item => item
             .setTitle('Delete')
@@ -549,7 +562,7 @@ export class PortalsView extends ItemView {
         menu.showAtPosition({ x: event.clientX, y: event.clientY });
     }
 
-    private showFolderContextMenu(event: MouseEvent, folder: TFolder) {
+    private showFolderContextMenu(event: MouseEvent, folder: TFolder, summaryEl: HTMLElement) {
         const menu = new Menu();
 
         menu.addItem(item => item
@@ -577,7 +590,7 @@ export class PortalsView extends ItemView {
         menu.addItem(item => item
             .setTitle('Rename')
             .setIcon('pencil')
-            .onClick(() => this.renameFolder(folder)));
+            .onClick(() => this.startRenameFolder(folder, summaryEl)));
 
         menu.addItem(item => item
             .setTitle('Delete')
@@ -601,6 +614,127 @@ export class PortalsView extends ItemView {
     }
 
     // ========== FILE OPERATIONS (Direct) ==========
+
+    // ========== INLINE RENAME & HELPERS ==========
+    private createRenameInput(initialValue: string, onSave: (val: string) => void, onCancel: () => void): HTMLInputElement {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = initialValue;
+        input.style.width = '100%';
+        input.style.padding = '2px 4px';
+        input.style.fontSize = 'inherit';
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                onSave(input.value);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                onCancel();
+            }
+        });
+        input.addEventListener('blur', () => onSave(input.value));
+        return input;
+    }
+
+    private startRenameFile(file: TFile, fileEl: HTMLElement) {
+        const nameSpan = fileEl.querySelector('span:last-child') as HTMLElement;
+        if (!nameSpan) return;
+
+        const isMd = file.extension === 'md';
+        const base = isMd ? file.basename : file.name;
+
+        const input = this.createRenameInput(base, async (newBase) => {
+            if (!newBase || newBase === base) return;
+            const newName = isMd ? newBase + '.' + file.extension : newBase;
+            const newPath = file.parent ? `${file.parent.path}/${newName}` : newName;
+            try {
+                await this.app.vault.rename(file, newPath);
+                new Notice('File renamed');
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                new Notice(`Rename failed: ${message}`);
+            } finally {
+                this.renaming = false;
+                this.renderContent();
+            }
+        }, () => {
+            this.renaming = false;
+            this.renderContent();
+        });
+
+        nameSpan.replaceWith(input);
+        input.focus();
+        input.select();
+        this.renaming = true;
+    }
+
+    private startRenameFolder(folder: TFolder, summaryEl: HTMLElement) {
+        const nameSpan = summaryEl.querySelector('span:last-child') as HTMLElement;
+        if (!nameSpan) return;
+
+        const input = this.createRenameInput(folder.name, async (newName) => {
+            if (!newName || newName === folder.name) return;
+            const parent = folder.parent?.path || '';
+            const newPath = parent ? `${parent}/${newName}` : newName;
+            try {
+                await this.app.vault.rename(folder, newPath);
+                new Notice('Folder renamed');
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                new Notice(`Rename failed: ${message}`);
+            } finally {
+                this.renaming = false;
+                this.renderContent();
+            }
+        }, () => {
+            this.renaming = false;
+            this.renderContent();
+        });
+        
+        nameSpan.replaceWith(input);
+        input.focus();
+        input.select();
+        this.renaming = true;
+    }
+
+    private scrollToAndHighlight(path: string) {
+        setTimeout(() => {
+            const item = this.containerEl.querySelector(`[data-path="${path}"]`);
+            if (item) {
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                item.addClass('portals-item-highlight');
+                setTimeout(() => item.removeClass('portals-item-highlight'), 2000);
+            }
+        }, 100);
+    }
+
+    private async triggerRenameOnPath(path: string) {
+        this.scrollToAndHighlight(path);
+        setTimeout(() => {
+            const item = this.containerEl.querySelector(`[data-path="${path}"]`);
+            if (!item) return;
+            const abstractFile = this.app.vault.getAbstractFileByPath(path);
+            if (abstractFile instanceof TFile) {
+                this.startRenameFile(abstractFile, item as HTMLElement);
+            } else if (abstractFile instanceof TFolder) {
+                this.startRenameFolder(abstractFile, item as HTMLElement);
+            }
+        }, 200);
+    }
+
+    private isFileOpen(file: TFile): boolean {
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        return leaves.some(leaf => {
+            const view = leaf.view;
+            return view && (view as any).file && (view as any).file.path === file.path;
+        });
+    }
+
+    private getActiveFilePath(): string | null {
+        const activeFile = this.app.workspace.getActiveFile();
+        return activeFile ? activeFile.path : null;
+    }
 
     private async duplicateFile(file: TFile) {
         const dir = file.parent?.path || '';
@@ -627,42 +761,6 @@ export class PortalsView extends ItemView {
         }
         return candidate;
     }
-
-    // ===== RENAME FUNCTIONS (show base name only, preserve extension) =====
-    private async renameFile(file: TFile) {
-        const displayName = file.basename;
-        new InputModal(this.app, 'Rename file', 'New name', displayName, async (newBase) => {
-            if (!newBase || newBase === displayName) return;
-            const newName = newBase + '.' + file.extension;
-            const dir = file.parent?.path || '';
-            const newPath = `${dir}/${newName}`;
-            try {
-                await this.app.vault.rename(file, newPath);
-                new Notice('File renamed');
-                this.renderContent();
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Rename failed: ${message}`);
-            }
-        }).open();
-    }
-
-    private async renameFolder(folder: TFolder) {
-        new InputModal(this.app, 'Rename folder', 'New name', folder.name, async (newName) => {
-            if (!newName || newName === folder.name) return;
-            const parent = folder.parent?.path || '';
-            const newPath = parent ? `${parent}/${newName}` : newName;
-            try {
-                await this.app.vault.rename(folder, newPath);
-                new Notice('Folder renamed');
-                this.renderContent();
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Rename failed: ${message}`);
-            }
-        }).open();
-    }
-    // ===============================================================
 
     private async deleteFile(file: TFile) {
         const confirmMsg = `Delete "${file.name}"?`;
@@ -692,16 +790,24 @@ export class PortalsView extends ItemView {
 
     private async newNoteInFolder(folder: TFolder) {
         const defaultName = 'Untitled.md';
-        let candidate = `${folder.path}/${defaultName}`;
+        const basePath = folder.path === '/' ? '' : folder.path;
+        let candidate = basePath ? `${basePath}/${defaultName}` : defaultName;
         let counter = 1;
         while (this.app.vault.getAbstractFileByPath(candidate)) {
-            candidate = `${folder.path}/Untitled ${counter}.md`;
+            candidate = basePath ? `${basePath}/Untitled ${counter}.md` : `Untitled ${counter}.md`;
             counter++;
         }
         try {
-            await this.app.vault.create(candidate, '');
-            new Notice('Note created');
-            this.renderContent();
+            const newFile = await this.app.vault.create(candidate, '');
+            await this.app.workspace.getLeaf().openFile(newFile);
+            
+            if (!this.plugin.settings.openFolders.includes(folder.path)) {
+                this.plugin.settings.openFolders.push(folder.path);
+                await this.plugin.saveSettings();
+            }
+            
+            await this.renderContent();
+            this.triggerRenameOnPath(newFile.path);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             new Notice(`Failed to create note: ${message}`);
@@ -710,16 +816,23 @@ export class PortalsView extends ItemView {
 
     private async newFolderInFolder(parent: TFolder) {
         const defaultName = 'New Folder';
-        let candidate = `${parent.path}/${defaultName}`;
+        const basePath = parent.path === '/' ? '' : parent.path;
+        let candidate = basePath ? `${basePath}/${defaultName}` : defaultName;
         let counter = 1;
         while (this.app.vault.getAbstractFileByPath(candidate)) {
-            candidate = `${parent.path}/New Folder ${counter}`;
+            candidate = basePath ? `${basePath}/New Folder ${counter}` : `New Folder ${counter}`;
             counter++;
         }
         try {
             await this.app.vault.createFolder(candidate);
-            new Notice('Folder created');
-            this.renderContent();
+            
+            if (!this.plugin.settings.openFolders.includes(parent.path)) {
+                this.plugin.settings.openFolders.push(parent.path);
+                await this.plugin.saveSettings();
+            }
+            
+            await this.renderContent();
+            this.triggerRenameOnPath(candidate);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             new Notice(`Failed to create folder: ${message}`);
@@ -809,6 +922,15 @@ export class PortalsView extends ItemView {
 
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
         summary.createSpan({ text: displayName });
+        summary.dataset.path = folder.path;
+        
+        const activePath = this.getActiveFilePath();
+        if (activePath) {
+            const isAncestor = folder.path === '/' ? true : activePath.startsWith(folder.path + '/');
+            if (isAncestor) {
+                summary.createSpan({ cls: 'open-dot' });
+            }
+        }
 
         // Disable drag on mobile
         if (!Platform.isMobile) {
@@ -822,7 +944,7 @@ export class PortalsView extends ItemView {
 
         summary.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            this.showFolderContextMenu(e, folder);
+            this.showFolderContextMenu(e, folder, summary);
         });
 
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
@@ -839,6 +961,10 @@ export class PortalsView extends ItemView {
                 fileEl.createSpan({ text: this.getDisplayName(child) });
 
                 fileEl.dataset.path = child.path;
+            
+            if (this.isFileOpen(child)) {
+                fileEl.createSpan({ cls: 'open-dot' });
+            }
 
                 // Disable drag on mobile
                 if (!Platform.isMobile) {
@@ -855,7 +981,7 @@ export class PortalsView extends ItemView {
 
                 fileEl.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
-                    this.showFileContextMenu(e, child);
+                    this.showFileContextMenu(e, child, fileEl);
                 });
             }
         }
