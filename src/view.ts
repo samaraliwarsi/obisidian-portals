@@ -633,70 +633,101 @@ export class PortalsView extends ItemView {
                 onCancel();
             }
         });
-        input.addEventListener('blur', () => onSave(input.value));
         return input;
     }
 
-    private startRenameFile(file: TFile, fileEl: HTMLElement) {
-        const nameSpan = fileEl.querySelector('span:last-child') as HTMLElement;
-        if (!nameSpan) return;
+   private startRenameFile(file: TFile, fileEl: HTMLElement) {
+    const nameSpan = fileEl.querySelector('span:last-child') as HTMLElement;
+    if (!nameSpan) return;
 
-        const isMd = file.extension === 'md';
-        const base = isMd ? file.basename : file.name;
+    const isMd = file.extension === 'md';
+    const base = isMd ? file.basename : file.name;
 
-        const input = this.createRenameInput(base, async (newBase) => {
-            if (!newBase || newBase === base) return;
-            const newName = isMd ? newBase + '.' + file.extension : newBase;
-            const newPath = file.parent ? `${file.parent.path}/${newName}` : newName;
-            try {
-                await this.app.vault.rename(file, newPath);
-                new Notice('File renamed');
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Rename failed: ${message}`);
-            } finally {
-                this.renaming = false;
-                this.renderContent();
-            }
-        }, () => {
+    const input = this.createRenameInput(base, async (newBase) => {
+        if (!newBase || newBase === base) return;
+        const newName = isMd ? newBase + '.' + file.extension : newBase;
+        const newPath = file.parent ? `${file.parent.path}/${newName}` : newName;
+        try {
+            await this.app.vault.rename(file, newPath);
+            new Notice('File renamed');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Rename failed: ${message}`);
+        } finally {
+            this.renaming = false;
+            document.removeEventListener('mousedown', outsideClickListener);
+            this.renderContent();
+        }
+    }, () => {
+        this.renaming = false;
+        document.removeEventListener('mousedown', outsideClickListener);
+        this.renderContent();
+    });
+
+    // Make input expand to fill remaining space
+    input.style.flex = '1';
+    input.style.minWidth = '0';
+
+    // Replace span with input
+    nameSpan.replaceWith(input);
+    input.focus();
+    input.select();
+    this.renaming = true;
+
+    // Outside click cancels rename
+    const outsideClickListener = (e: MouseEvent) => {
+        if (!input.contains(e.target as Node)) {
+            document.removeEventListener('mousedown', outsideClickListener);
+            // Cancel without saving
             this.renaming = false;
             this.renderContent();
-        });
-
-        nameSpan.replaceWith(input);
-        input.focus();
-        input.select();
-        this.renaming = true;
-    }
+        }
+    };
+    document.addEventListener('mousedown', outsideClickListener);
+}
 
     private startRenameFolder(folder: TFolder, summaryEl: HTMLElement) {
-        const nameSpan = summaryEl.querySelector('span:last-child') as HTMLElement;
-        if (!nameSpan) return;
+    const nameSpan = summaryEl.querySelector('span:last-child') as HTMLElement;
+    if (!nameSpan) return;
 
-        const input = this.createRenameInput(folder.name, async (newName) => {
-            if (!newName || newName === folder.name) return;
-            const parent = folder.parent?.path || '';
-            const newPath = parent ? `${parent}/${newName}` : newName;
-            try {
-                await this.app.vault.rename(folder, newPath);
-                new Notice('Folder renamed');
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Rename failed: ${message}`);
-            } finally {
-                this.renaming = false;
-                this.renderContent();
-            }
-        }, () => {
+    const input = this.createRenameInput(folder.name, async (newName) => {
+        if (!newName || newName === folder.name) return;
+        const parent = folder.parent?.path || '';
+        const newPath = parent ? `${parent}/${newName}` : newName;
+        try {
+            await this.app.vault.rename(folder, newPath);
+            new Notice('Folder renamed');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Rename failed: ${message}`);
+        } finally {
+            this.renaming = false;
+            document.removeEventListener('mousedown', outsideClickListener);
+            this.renderContent();
+        }
+    }, () => {
+        this.renaming = false;
+        document.removeEventListener('mousedown', outsideClickListener);
+        this.renderContent();
+    });
+
+    input.style.flex = '1';
+    input.style.minWidth = '0';
+
+    nameSpan.replaceWith(input);
+    input.focus();
+    input.select();
+    this.renaming = true;
+
+    const outsideClickListener = (e: MouseEvent) => {
+        if (!input.contains(e.target as Node)) {
+            document.removeEventListener('mousedown', outsideClickListener);
             this.renaming = false;
             this.renderContent();
-        });
-        
-        nameSpan.replaceWith(input);
-        input.focus();
-        input.select();
-        this.renaming = true;
-    }
+        }
+    };
+    document.addEventListener('mousedown', outsideClickListener);
+}
 
     private scrollToAndHighlight(path: string) {
         setTimeout(() => {
