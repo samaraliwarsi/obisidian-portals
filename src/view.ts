@@ -495,7 +495,8 @@ export class PortalsView extends ItemView {
             const fileEl = container.createDiv({ cls: 'file-item' });
             const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
             fileIcon.createEl('i', { cls: 'ph ph-file' });
-            fileEl.createSpan({ text: this.getDisplayName(file) });
+            const nameSpan = fileEl.createSpan({ text: this.getDisplayName(file) });
+            nameSpan.addClass('portals-item-name');
 
             fileEl.dataset.path = file.path;
 
@@ -620,9 +621,18 @@ export class PortalsView extends ItemView {
         const input = document.createElement('input');
         input.type = 'text';
         input.value = initialValue;
-        input.style.width = '100%';
+        input.style.flex = '1';
+        input.style.minWidth = '0';
         input.style.padding = '2px 4px';
-        input.style.fontSize = 'inherit';
+        input.style.font = 'inherit';
+        input.style.color = 'inherit';
+        input.style.background = 'var(--background-primary)';
+        input.style.border = '1px solid var(--interactive-accent)';
+        input.style.borderRadius = '4px';
+        input.style.boxShadow = 'none';
+        input.style.outline = 'none';
+        input.style.margin = '0';
+        input.style.boxSizing = 'border-box';
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -637,7 +647,7 @@ export class PortalsView extends ItemView {
     }
 
    private startRenameFile(file: TFile, fileEl: HTMLElement) {
-    const nameSpan = fileEl.querySelector('span:last-child') as HTMLElement;
+    const nameSpan = fileEl.querySelector('.portals-item-name') as HTMLElement;
     if (!nameSpan) return;
 
     const isMd = file.extension === 'md';
@@ -687,7 +697,7 @@ export class PortalsView extends ItemView {
 }
 
     private startRenameFolder(folder: TFolder, summaryEl: HTMLElement) {
-    const nameSpan = summaryEl.querySelector('span:last-child') as HTMLElement;
+    const nameSpan = summaryEl.querySelector('.portals-item-name') as HTMLElement;
     if (!nameSpan) return;
 
     const input = this.createRenameInput(folder.name, async (newName) => {
@@ -952,7 +962,8 @@ export class PortalsView extends ItemView {
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
 
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
-        summary.createSpan({ text: displayName });
+        const nameSpan = summary.createSpan({ text: displayName });
+        nameSpan.addClass('portals-item-name');
         summary.dataset.path = folder.path;
         
         const activePath = this.getActiveFilePath();
@@ -989,7 +1000,8 @@ export class PortalsView extends ItemView {
                 const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                 const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
                 fileIcon.createEl('i', { cls: 'ph ph-file' });
-                fileEl.createSpan({ text: this.getDisplayName(child) });
+                const nameSpan = fileEl.createSpan({ text: this.getDisplayName(child) });
+                nameSpan.addClass('portals-item-name');
 
                 fileEl.dataset.path = child.path;
             
