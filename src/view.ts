@@ -154,6 +154,7 @@ export class PortalsView extends ItemView {
             selectedSpace: s.selectedSpace,
             filePaneColorStyle: s.filePaneColorStyle,
             tabColorEnabled: s.tabColorEnabled,
+            showInactiveTabNames: s.showInactiveTabNames,
             sortBy: s.sortBy,
             sortOrder: s.sortOrder
         });
@@ -214,6 +215,9 @@ export class PortalsView extends ItemView {
                         tab.createSpan({ text: displayName });
                     }
                 } else {
+                    if (this.plugin.settings.showInactiveTabNames) {
+                        tab.createSpan({ text: displayName})
+                    }
                     if (!Platform.isMobile) {
                         tab.addEventListener('mouseenter', () => {
                             this.showTooltip(displayName, tab);

@@ -21,6 +21,7 @@ export interface SpacesSettings {
     tabColorEnabled: boolean;
     sortBy: 'name' | 'created' | 'modified';
     sortOrder: 'asc' | 'desc';
+    showInactiveTabNames: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     filePaneColorStyle: 'gradient',
     tabColorEnabled: true,
     sortBy: 'name',
+    showInactiveTabNames: false,
     sortOrder: 'asc'
 };
 
@@ -93,6 +95,17 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.tabColorEnabled)
                 .onChange(async (value) => {
                     this.plugin.settings.tabColorEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+        
+        new Setting(containerEl)
+            .setName('Show inactive tab names')
+            .setDesc('Always display the name of inactive tabs (may increase tab bar width).')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showInactiveTabNames)
+                .onChange(async (value) => {
+                    this.plugin.settings.showInactiveTabNames = value;
                     await this.plugin.saveSettings();
                     this.display();
                 }));
