@@ -151,7 +151,7 @@ export class PortalsView extends ItemView {
         return JSON.stringify({
             spaces: s.spaces.map(sp => `${sp.type}:${sp.path}|${sp.icon}|${sp.color}`).join(','),
             openFolders: s.openFolders.join(','),
-            selectedSpace: s.selectedSpace,
+            selectedSpace: s.selectedSpace ? `${s.selectedSpace.type}:${s.selectedSpace.path}` : '',
             filePaneColorStyle: s.filePaneColorStyle,
             tabColorEnabled: s.tabColorEnabled,
             showInactiveTabNames: s.showInactiveTabNames,
@@ -207,7 +207,7 @@ export class PortalsView extends ItemView {
                     }
                 }
 
-                const isActive = (space.path === this.plugin.settings.selectedSpace);
+                const isActive = (space.path === this.plugin.settings.selectedSpace?.path && space.type === this.plugin.settings.selectedSpace?.type);
 
                 if (isActive) {
                     tab.addClass('is-active');
@@ -252,7 +252,10 @@ export class PortalsView extends ItemView {
 
                 tab.addEventListener('click', async () => {
                     this.hideTooltip(0);
-                    this.plugin.settings.selectedSpace = space.path;
+                    this.plugin.settings.selectedSpace = {
+                        path: space.path,
+                        type: space.type
+                    };
 
                     if (space.type === 'folder' && !this.plugin.settings.openFolders.includes(space.path)) {
                         this.plugin.settings.openFolders.push(space.path);
@@ -314,7 +317,10 @@ export class PortalsView extends ItemView {
 
             const contentArea = container.createEl('div', { cls: 'portals-content' });
 
-            const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
+            const selectedSpace = spaces.find(s => 
+                s.path === this.plugin.settings.selectedSpace?.path && 
+                s.type === this.plugin.settings.selectedSpace?.type
+            ) || spaces[0];
             if (selectedSpace) {
                 if (selectedSpace.type === 'folder') {
                     const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
@@ -350,7 +356,11 @@ export class PortalsView extends ItemView {
 
             // New note button (only works in folder spaces)
             createFloatingButton('file-plus', 'New note', 148, async () => {
-                const currentSpace = this.plugin.settings.spaces.find(s => s.path === this.plugin.settings.selectedSpace);
+                const currentSpace = this.plugin.settings.spaces.find(s => 
+                    s.path === this.plugin.settings.selectedSpace?.path && 
+                    s.type === this.plugin.settings.selectedSpace?.type
+                );
+                
                 if (!currentSpace || currentSpace.type !== 'folder') {
                     new Notice('Please select a folder space first.');
                     return;
@@ -365,7 +375,10 @@ export class PortalsView extends ItemView {
 
             // New folder button (only works in folder spaces)
             createFloatingButton('folder-simple-plus', 'New folder', 104, async () => {
-                const currentSpace = this.plugin.settings.spaces.find(s => s.path === this.plugin.settings.selectedSpace);
+                const currentSpace = this.plugin.settings.spaces.find(s => 
+                    s.path === this.plugin.settings.selectedSpace?.path && 
+                    s.type === this.plugin.settings.selectedSpace?.type
+                );
                 if (!currentSpace || currentSpace.type !== 'folder') {
                     new Notice('Please select a folder space first.');
                     return;
@@ -418,9 +431,9 @@ export class PortalsView extends ItemView {
 
             // Collapse button
             createFloatingButton('stack', 'Collapse all', 16, async () => {
-                const currentSpacePath = this.plugin.settings.selectedSpace;
-                if (!currentSpacePath) return;
-                this.plugin.settings.openFolders = [currentSpacePath];
+                const currentSpace = this.plugin.settings.selectedSpace;
+                if (!currentSpace) return;
+                this.plugin.settings.openFolders = [currentSpace.path];
                 await this.plugin.saveSettings();
                 this.renderContent();
             });
@@ -438,7 +451,10 @@ export class PortalsView extends ItemView {
         contentArea.empty();
 
         const spaces = this.plugin.settings.spaces;
-        const selectedSpace = spaces.find(s => s.path === this.plugin.settings.selectedSpace) || spaces[0];
+        const selectedSpace = spaces.find(s => 
+            s.path === this.plugin.settings.selectedSpace?.path && 
+            s.type === this.plugin.settings.selectedSpace?.type
+        ) || spaces[0];
         if (!selectedSpace) return;
 
         if (selectedSpace.type === 'folder') {

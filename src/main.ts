@@ -9,7 +9,10 @@ export default class PortalsPlugin extends Plugin {
         await this.loadSettings();
 
         // Ensure the selected space (if it's a folder) is in openFolders
-        const selectedSpace = this.settings.spaces.find(s => s.path === this.settings.selectedSpace);
+        const selectedSpace = this.settings.spaces.find(s => 
+            s.path === this.settings.selectedSpace?.path && 
+            s.type === this.settings.selectedSpace?.type
+        );
         if (selectedSpace && selectedSpace.type === 'folder') {
             if (!this.settings.openFolders.includes(selectedSpace.path)) {
                 this.settings.openFolders.push(selectedSpace.path);
@@ -39,9 +42,24 @@ export default class PortalsPlugin extends Plugin {
 
     async onunload() { }
 
-    async loadSettings() {
+        async loadSettings() {
         const data = await this.loadData();
         this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        
+        // Migrate old selectedSpace (string) to new object format
+        if (typeof this.settings.selectedSpace === 'string') {
+            const oldPath = this.settings.selectedSpace;
+            const matchingSpace = this.settings.spaces.find(s => s.path === oldPath);
+            if (matchingSpace) {
+                this.settings.selectedSpace = {
+                    path: matchingSpace.path,
+                    type: matchingSpace.type
+                };
+            } else {
+                this.settings.selectedSpace = null;
+            }
+        }
+        
         // Migrate old spaces (pre-type) to have type 'folder'
         if (this.settings.spaces) {
             this.settings.spaces.forEach(space => {
@@ -119,9 +137,14 @@ export default class PortalsPlugin extends Plugin {
 
         // Adjust selected space if it's gone
         if (this.settings.selectedSpace) {
-            const stillExists = this.settings.spaces.some(s => s.path === this.settings.selectedSpace);
+            const stillExists = this.settings.spaces.some(s => 
+                s.path === this.settings.selectedSpace!.path && 
+                s.type === this.settings.selectedSpace!.type
+            );
             if (!stillExists) {
-                this.settings.selectedSpace = this.settings.spaces[0]?.path || null;
+                this.settings.selectedSpace = this.settings.spaces[0] 
+                    ? { path: this.settings.spaces[0].path, type: this.settings.spaces[0].type }
+                    : null;
             }
         }
 

@@ -12,7 +12,7 @@ export interface SpaceConfig {
 export interface SpacesSettings {
     spaces: SpaceConfig[];
     openFolders: string[];
-    selectedSpace: string | null;
+    selectedSpace: { path: string; type: 'folder' | 'tag' } | null;
     showSubfolders: boolean;
     showTags: boolean;
     replaceFileExplorer: boolean;
@@ -138,12 +138,14 @@ export class SpacesSettingTab extends PluginSettingTab {
                         }
                     }
                     if (!this.plugin.settings.selectedSpace) {
-                        this.plugin.settings.selectedSpace = rootPath;
+                        this.plugin.settings.selectedSpace = { path: rootPath, type: 'folder' };
                     }
                 } else {
                     this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => !(s.path === rootPath && s.type === 'folder'));
-                    if (this.plugin.settings.selectedSpace === rootPath) {
-                        this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0]?.path || null;
+                    if (this.plugin.settings.selectedSpace?.path === rootPath && this.plugin.settings.selectedSpace?.type === 'folder') {
+                        this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0] 
+                        ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
+                        : null;
                     }
                 }
                 await this.plugin.saveSettings();
@@ -296,12 +298,14 @@ export class SpacesSettingTab extends PluginSettingTab {
                                 color: 'transparent'
                             });
                             if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {
-                                this.plugin.settings.selectedSpace = path;
+                                this.plugin.settings.selectedSpace = { path: path, type: 'folder' };
                             }
                         } else {
                             this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => !(s.type === 'folder' && s.path === path));
-                            if (this.plugin.settings.selectedSpace === path) {
-                                this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0]?.path || null;
+                            if (this.plugin.settings.selectedSpace?.path === path && this.plugin.settings.selectedSpace?.type === 'folder') {
+                                this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0] 
+                                ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
+                                : null;
                             }
                         }
                         await this.plugin.saveSettings();
@@ -354,12 +358,14 @@ export class SpacesSettingTab extends PluginSettingTab {
                                     color: 'transparent'
                                 });
                                 if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {
-                                    this.plugin.settings.selectedSpace = tagName;
+                                    this.plugin.settings.selectedSpace = { path: tagName, type: 'tag' };
                                 }
                             } else {
                                 this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => !(s.type === 'tag' && s.path === tagName));
-                                if (this.plugin.settings.selectedSpace === tagName) {
-                                    this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0]?.path || null;
+                                if (this.plugin.settings.selectedSpace?.path === tagName && this.plugin.settings.selectedSpace?.type === 'tag') {
+                                    this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0] 
+                                    ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
+                                    : null;
                                 }
                             }
                             await this.plugin.saveSettings();
