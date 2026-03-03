@@ -498,7 +498,7 @@ export class PortalsView extends ItemView {
         return file.name;
     }
 
-    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string) {
+        private buildTagSpace(tagName: string, container: HTMLElement, iconName: string) {
         const tag = '#' + tagName;
         const allFiles = this.app.vault.getMarkdownFiles();
         const taggedFiles = allFiles.filter(file => {
@@ -511,8 +511,23 @@ export class PortalsView extends ItemView {
             return;
         }
 
+        // Create a collapsible container like a folder
+        const details = container.createEl('details', { cls: 'folder-details' });
+        details.setAttr('open', 'true'); // start expanded
+
+        const summary = details.createEl('summary', { cls: 'folder-summary' });
+        const iconSpan = summary.createSpan({ cls: 'folder-icon' });
+        iconSpan.createEl('i', { cls: `ph ph-${iconName || 'tag'}` });
+        const nameSpan = summary.createSpan({ text: '#' + tagName });
+        nameSpan.addClass('portals-item-name');
+
+        // Tag summary is not draggable and has no folder context menu
+        // (intentionally skip drag and contextmenu listeners)
+
+        const childrenContainer = details.createDiv({ cls: 'folder-children' });
+
         for (const file of taggedFiles) {
-            const fileEl = container.createDiv({ cls: 'file-item' });
+            const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
             const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
             fileIcon.createEl('i', { cls: 'ph ph-file' });
             const nameSpan = fileEl.createSpan({ text: this.getDisplayName(file) });
@@ -520,11 +535,10 @@ export class PortalsView extends ItemView {
 
             fileEl.dataset.path = file.path;
 
-        if (this.isFileOpen(file)) {
-            fileEl.createSpan({ cls: 'open-dot' });
-        }
+            if (this.isFileOpen(file)) {
+                fileEl.createSpan({ cls: 'open-dot' });
+            }
 
-            // Disable drag on mobile
             if (!Platform.isMobile) {
                 fileEl.draggable = true;
                 fileEl.addEventListener('dragstart', (e) => {
