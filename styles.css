@@ -1,4 +1,5 @@
-/* ===== Phosphor Icons - Regular (from node_modules/@phosphor-icons/web/src/regular/style.css) ===== */
+/* ==================== PHOSPHOR ICONS (REGULAR) ==================== */
+
 @font-face {
   font-family: "Phosphor";
   src:
@@ -4621,484 +4622,399 @@
 .ph-youtube-logo:before {
   content: "\e4fc";
 }
-/* ===== End of Phosphor Icon Definitions ===== */
 
-/* ===== TABS – unified style ===== */
-.portals-tab {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-    white-space: nowrap;
-    border: none;
-    border-bottom: 2px solid transparent;  /* transparent by default, color set inline for active tab */
-    background: transparent;                /* no background for inactive tabs */
-    color: var(--text-muted);
-    transition: background-color 0.1s, border-color 0.1s, color 0.1s;
-    user-select: none;
-    flex-shrink: 0;
-    position: relative;
-    filter: none;
-}
-
-.portals-tab:hover {
-    background: rgba(128, 128, 128, 0.15);  /* consistent overlay – works on any background */
-    color: var(--text-normal);
-}
-
-.portals-tab.is-active {
-    background: transparent;
-    color: var(--text-normal);
-    border-bottom-color: var(--interactive-accent); /* fallback if no inline color */
-}
-
-/* Icons inside tabs – keep consistent size */
-.portals-tab-icon {
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.portals-tab-icon i {
-    font-size: 18px;
-    vertical-align: middle;
-}
-/* ===== END OF TABS – unified style ===== */
-
-/* File tree icons - use normal text color */
-.file-icon .ph,
-.folder-icon .ph {
-    color: var(--text-normal);
-}
-
-/* ===== File Tree Adjustments ===== */
-
-/* Make file items and folder summaries full width and add horizontal padding */
-.file-item,
-.folder-summary {
-    width: 100%;
-    box-sizing: border-box;
-    padding-left: 12px !important;   /* adjust as needed */
-    padding-right: 12px !important;  /* adjust as needed */
-}
-
-/* Ensure the hover background still works (Obsidian's default hover may already do this) */
-.file-item:hover,
-.folder-summary:hover {
-    background-color: var(--background-modifier-hover); /* or keep default */
-}
-
-/* Folder names – bold */
-.folder-summary span:last-child {
-    font-weight: 700 !important; /* bold – use 600 for semibold if preferred */
-}
-
-/* File names – regular */
-.file-item span:last-child {
-    font-weight: 400 !important; /* regular – use 300 for thin */
-}
-
-/* Reduce font and icon size in file view */
-.file-item,
-.folder-summary {
-    font-size: 14px; /* adjust as needed */
-}
-
-.file-icon .ph,
-.folder-icon .ph {
-    font-size: 14px; /* smaller than default 18px */
-}
-
-/* Add space between file list items */
-.file-item {
-    margin-bottom: 8px; /* or 4px, adjust to taste */
-}
-
-/* Make folder tree lines more visible: thin, dashed, slightly darker */
-.folder-children {
-    border-left: 1px dashed var(--interactive-accent); /* already thin, maybe keep */
-    /* optionally use a more contrasting color, but keep with theme */
-}
-
-/* Prevent file/folder names from wrapping */
-.file-item span:last-child,
-.folder-summary span:last-child {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* adds "..." if needed */
-}
-
-/* Change expand/collapse marker from ▶ to phosphor caret-right*/
-.folder-summary::before {
-    font-family: "Phosphor" !important;
-    content: "\e13a" !important; /* ph-caret-right */
-    font-size: 0.9em;
-    transition: transform 0.15s;
-    /* remove any rotation transform from previous rule */
-    transform: rotate(0deg) !important;
-}
-
-details[open] > .folder-summary::before {
-    content: "\e136" !important; /* ph-caret-down */
-}
+/* =========== END OF PHOSPHOR ICONS ============ */
 
 
-/*==Plugin Floating buttons All==*/
-.portals-floating-btn {
-    position: absolute;
-    left: 16px;
-    z-index: 10;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(128, 128, 128, 0.15);
-    backdrop-filter: blur(2px);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text-muted);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
-}
 
-.portals-floating-btn:hover {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
+/* =========== PORTAL PLUGIN CORE STYLES =========== */
 
-.portals-floating-btn i {
-    font-size: 18px;
-}
+/* ----- Global container & layout ----- */
 
-/* ===== Your Plugin's Custom UI Styles ===== */
 .portals-container {
-    padding: 10px 10px 0 10px;
-    height: 100%;
-    overflow-y: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.portals-floating-tooltip {
-    position: fixed;
-    background: var(--background-secondary);
-    color: var(--text-normal);
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    z-index: 10000;
-    pointer-events: none;
-    transition: opacity 0.15s ease;
-    opacity: 0;
-    display: none;
-}
-
-.portals-floating-tooltip[style*="display: block"] {
-    opacity: 1;
-}
-
-.portals-tab-bar {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 4px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: 15px;
-    scrollbar-width: auto;
-    margin-top: 8px;
-}
-
-.portals-tab-bar::-webkit-scrollbar {
-  height: 8px;
-}
-
-.portals-tab-bar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.portals-tab-bar::-webkit-scrollbar-thumb {
-    background: var(--background-modifier-border);
-    border-radius: 4px;
-}
-
-.portals-tab-bar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
-}
-
-.open-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--interactive-accent);
-    margin-left: 4px;
-}
-
-.portals-item-highlight {
-    background-color: var(--interactive-accent) !important;
-    color: var(--text-on-accent) !important;
-    transition: background-color 0.5s;
-}
-
-.folder-summary .open-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--interactive-accent);
-    margin-left: 4px;
-    vertical-align: middle;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .portals-tab {
-    padding: 8px 12px;
-    font-size: 1em;
-    margin-top: 2px;
-  }
-
-  .portals-tab-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  .portals-tab-icon i {
-    font-size: 20px;
-  }
-
-  .portals-tab-bar {
-    padding-bottom: 20px;
-    margin-top: 15px;
-  }
-
-  .portals-tab-bar::-webkit-scrollbar {
-    height: 12px;
-  }
-
-  /* Mobile Settings */
-  .portals-color-wrapper {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        width: 100% !important;
-    }
-
-    .portals-color-wrapper input[type="color"] {
-        width: 100% !important;
-        height: 40px !important;
-    }
-
-    .portals-color-wrapper input[type="range"] {
-        width: 100% !important;
-    }
-
-    .portals-color-wrapper .portals-color-preview {
-        width: 100% !important;
-        height: 30px !important;
-    }
-
-    .portals-color-wrapper span {
-        display: block;
-        width: 100%;
-        text-align: left;
-    }
-
-    setting-item {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-    }
-
-    .setting-item .setting-item-info {
-        width: 100% !important;
-        margin-bottom: 8px !important;
-    }
-
-    .setting-item .setting-item-control {
-        width: 100% !important;
-        justify-content: flex-start !important;
-    }
-}
-
-/*Tooltip for inactive tabs*/
-@media (hover: hover) {
-  .portals-tab[data-tooltip]:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    top: 100%;           /* below the tab */
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 4px;     /* small gap */
-    background: var(--background-secondary);
-    color: var(--text-normal);
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-    pointer-events: none;
-  }
-}
-
-.portals-tab-icon,
-.folder-icon,
-.file-icon {
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+position: relative;
+padding: 10px 10px 0 10px;
+height: 100%;
+overflow-y: hidden;
+display: flex;
+flex-direction: column;
 }
 
 .portals-content {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    margin: 0;
-    padding: 0;
+flex: 1;
+overflow-y: auto;
+min-height: 0;
+margin: 0;
+padding: 0;
 }
 
+/* ----- Tab bar & tabs ----- */
+
+.portals-tab-bar {
+display: flex;
+flex-wrap: nowrap;
+overflow-x: auto;
+-webkit-overflow-scrolling: touch;
+gap: 4px;
+margin-bottom: 12px;
+border-bottom: 1px solid var(--background-modifier-border);
+padding-bottom: 15px;
+margin-top: 8px;
+scrollbar-width: auto;
+}
+
+.portals-tab-bar::-webkit-scrollbar {
+height: 8px;
+}
+
+.portals-tab-bar::-webkit-scrollbar-track {
+background: transparent;
+}
+
+.portals-tab-bar::-webkit-scrollbar-thumb {
+background: var(--background-modifier-border);
+border-radius: 4px;
+}
+
+.portals-tab-bar::-webkit-scrollbar-thumb:hover {
+background: var(--text-muted);
+}
+
+.portals-tab {
+display: flex;
+align-items: center;
+gap: 4px;
+padding: 4px 8px;
+border-radius: 4px;
+cursor: pointer;
+font-size: 0.9em;
+white-space: nowrap;
+border: none;
+border-bottom: 2px solid transparent;
+background: transparent;
+color: var(--text-muted);
+transition: background-color 0.1s, border-color 0.1s, color 0.1s;
+user-select: none;
+flex-shrink: 0;
+position: relative;
+}
+
+.portals-tab:hover {
+background: rgba(128, 128, 128, 0.15);
+color: var(--text-normal);
+}
+
+.portals-tab.is-active {
+background: transparent;
+color: var(--text-normal);
+border-bottom-color: var(--interactive-accent); 
+}
+
+.portals-tab-pinned {
+border-left: 2px solid var(--interactive-accent);
+}
+
+.portals-tab-pinned:not(.is-active) {
+opacity: 0.9;
+}
+
+/* Icons inside tabs */
+
+.portals-tab-icon {
+width: 16px;
+height: 16px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+}
+
+.portals-tab-icon .ph {
+font-size: 18px;
+vertical-align: middle;
+}
+
+/* ----- Floating tooltip for inactive tabs ----- */
+
+.portals-floating-tooltip {
+position: fixed;
+background: var(--background-secondary);
+color: var(--text-normal);
+font-size: 12px;
+padding: 4px 8px;
+border-radius: 4px;
+white-space: nowrap;
+box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+z-index: 10000;
+pointer-events: none;
+transition: opacity 0.15s ease;
+opacity: 0;
+display: none;
+}
+
+.portals-floating-tooltip[style*="display: block"] {
+opacity: 1;
+}
+
+/* ----- File tree / space content ----- */
+
 .portals-space-content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    border-radius: 6px;
-    padding: 8px;
-    margin: 0;
+flex: 1;
+min-height: 0;
+overflow-y: auto;
+border-radius: 6px;
+padding: 8px;
+margin: 0;
 }
 
 .portals-space-content > :last-child,
 .file-item:last-child,
 .folder-details:last-child {
-    margin-bottom: 6px;
-}
-
-.folder-details:first-child {
-    margin-top: 0;
-}
-
-.portal-error {
-    color: var(--text-error);
-    padding: 4px 8px;
-    background-color: var(--background-modifier-error);
-    border-radius: 4px;
+margin-bottom: 6px;
 }
 
 .folder-details {
-    margin-left: 0;
-    margin-bottom: 6px;
+margin-left: 0;
+margin-bottom: 6px;
 }
 
 .folder-details[open] > .folder-summary {
-    margin-bottom: 6px;
+margin-bottom: 6px;
 }
 
 .folder-summary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    list-style: none;
-    padding: 4px 0;
+display: flex;
+align-items: center;
+gap: 6px;
+cursor: pointer;
+list-style: none;
+padding: 4px 0;
+width: 100%;
+box-sizing: border-box;
+padding-left: 12px !important;
+padding-right: 12px !important;
 }
 
 .folder-summary::-webkit-details-marker {
-    display: none;
+display: none;
 }
 
 .folder-summary::before {
-    content: '▶';
-    display: inline-block;
-    width: 1em;
-    font-size: 0.8em;
-    transition: transform 0.2s;
+font-family: "Phosphor";
+content: "\e13a"; /* ph-caret-right */
+font-size: 0.9em;
+transition: transform 0.15s;
+transform: rotate(0deg);
 }
 
 details[open] > .folder-summary::before {
-    transform: rotate(90deg);
+content: "\e136"; /* ph-caret-down */
+}
+
+.folder-summary:hover {
+background-color: var(--background-modifier-hover);
 }
 
 .folder-children {
-    margin-left: 24px;
-    padding-left: 8px;
-    border-left: 1px dashed var(--background-modifier-border);
+margin-left: 24px;
+padding-left: 8px;
+border-left: 1px dashed var(--background-modifier-border);
 }
 
+/* File items */
+
 .file-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 0;
-    cursor: pointer;
-    border-radius: 4px;
+display: flex;
+align-items: center;
+gap: 6px;
+padding: 2px 0;
+cursor: pointer;
+border-radius: 4px;
+width: 100%;
+box-sizing: border-box;
+padding-left: 12px !important;
+padding-right: 12px !important;
+margin-bottom: 8px;
 }
 
 .file-item:hover {
-    background-color: var(--background-modifier-hover);
+background-color: var(--background-modifier-hover);
 }
 
-.drag-over {
-    background-color: var(--interactive-accent) !important;
-    opacity: 0.7;
+/* File and folder names – now using dedicated class */
+
+.file-item .portals-item-name,
+.folder-summary .portals-item-name {
+font-weight: 400; /* files regular, folders will be overridden below */
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+flex: 1;
+min-width: 0;
 }
 
-/* Adjust icon size in your UI */
-.portals-tab-icon .ph,
+/* Folder names – bold */
+
+.folder-summary .portals-item-name {
+font-weight: 700 !important;
+}
+
+/* Icons in tree */
+
 .folder-icon .ph,
 .file-icon .ph {
-    font-size: 18px;
-    vertical-align: middle;
+font-size: 14px;
+width: 14px;
+height: 14px;
+display: block;
+line-height: 14px;
+text-align: center;
+color: var(--text-normal);
 }
 
-.portals-tab-pinned {
-    /* Example: a left border to make it stand out */
-    border-left: 2px solid var(--interactive-accent);
-    /* Or a subtle background tint */
-    /* background-color: var(--background-secondary); */
+/* Open dot indicator */
+
+.open-dot {
+display: inline-block;
+width: 6px;
+height: 6px;
+border-radius: 50%;
+background-color: var(--interactive-accent);
+box-shadow: 0 0 0 1px var(--background-primary);
+margin-left: 4px;
+vertical-align: middle;
 }
 
-/* Optional: make pinned tab slightly different even when inactive */
-.portals-tab-pinned:not(.is-active) {
-    opacity: 0.9;
-    filter: none; /* override any grayscale from inactive if needed */
+/* Highlight for newly created items */
+
+.portals-item-highlight {
+background-color: 3px solid var(--interactive-accent) !important;
+transition: border-bottom 0.5s;
 }
 
-/* Floating collapse button – forced styles */
+/* Drag‑over feedback */
+
+.drag-over {
+background-color: var(--interactive-accent) !important;
+opacity: 0.7;
+}
+
+/* ----- Floating action buttons ----- */
+
+.portals-floating-btn {
+position: absolute;
+left: 16px;
+z-index: 10;
+width: 32px;
+height: 32px;
+border-radius: 50%;
+background: rgba(128, 128, 128, 0.5);
+backdrop-filter: blur(4px);
+border: none;
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+color: var(--text-muted);
+box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
+}
+
+.portals-floating-btn:hover {
+background: var(--interactive-accent);
+color: var(--text-on-accent);
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.portals-floating-btn .ph {
+font-size: 18px;
+}
+
+/* ----- Mobile adjustments ----- */
+
+@media (max-width: 768px) {
+.portals-tab {
+padding: 8px 12px;
+font-size: 1em;
+margin-top: 2px;
+}
+
+.portals-tab-icon {
+width: 20px;
+height: 20px;
+}
+
+.portals-tab-icon .ph {
+font-size: 20px;
+}
+
+.portals-tab-bar {
+padding-bottom: 20px;
+margin-top: 15px;
+}
+
+.portals-tab-bar::-webkit-scrollbar {
+height: 12px;
+}
+
+/* Settings page adjustments */
+
+.portals-color-wrapper {
+flex-direction: column !important;
+align-items: flex-start !important;
+width: 100% !important;
+box-sizing: border-box;
+padding: 4px;
+}
+
+.portals-color-wrapper input[type="color"] {
+width: 100% !important;
+height: 40px !important;
+}
+
+.portals-color-wrapper input[type="range"] {
+width: 100% !important;
+}
+
+.portals-color-wrapper .portals-color-preview {
+width: 100% !important;
+height: 30px !important;
+}
+
+.portals-color-wrapper span {
+display: block;
+width: 100%;
+text-align: left;
+}
+
+.setting-item {
+flex-direction: column !important;
+align-items: flex-start !important;
+}
+
+.setting-item .setting-item-info {
+width: 100% !important;
+margin-bottom: 8px !important;
+}
+
+.setting-item .setting-item-control {
+width: 100% !important;
+justify-content: flex-start !important;
+}
+
+}
+
+/* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */
+
 .portals-container {
-    position: relative !important;
+padding-bottom: 0 !important;
 }
 
-.portals-collapse-all-btn:hover {
-    background: var(--interactive-accent) !important;
-    color: var(--text-on-accent) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
-
-.portals-collapse-all-btn i {
-    font-size: 20px !important;
-    display: inline-block !important;
-}
-
-.portals-container {
-    padding-bottom: 0 !important;
-}
 .portals-content {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
+margin-top: 0 !important;
+padding-top: 0 !important;
 }
+
 .workspace-leaf-content {
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
+padding-bottom: 0 !important;
+margin-bottom: 0 !important;
 }
