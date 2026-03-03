@@ -799,11 +799,17 @@ export class PortalsView extends ItemView {
     }
 
     private isFileOpen(file: TFile): boolean {
-        const leaves = this.app.workspace.getLeavesOfType('markdown');
-        return leaves.some(leaf => {
-            const view = leaf.view;
-            return view && (view as any).file && (view as any).file.path === file.path;
-        });
+        const viewTypes = ['markdown', 'canvas', 'image', 'pdf', 'audio', 'video', 'bases', 'fountain', 'excalidraw'];
+
+        for (const type of viewTypes) {
+            const leaves = this.app.workspace.getLeavesOfType(type);
+            const found = leaves.some(leaf => {
+                const view = leaf.view;
+                return view && (view as any).file && (view as any).file.path === file.path;
+            });
+            if (found) return true;
+        }
+        return false;
     }
 
     private getActiveFilePath(): string | null {
