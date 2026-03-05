@@ -505,6 +505,38 @@ export class PortalsView extends ItemView {
             const cache = this.app.metadataCache.getFileCache(file);
             return cache?.tags?.some(t => t.tag === tag) || cache?.frontmatter?.tags?.includes(tagName);
         });
+        
+        const sortBy = this.plugin.settings.sortBy;
+        const sortOrder = this.plugin.settings.sortOrder;
+        taggedFiles.sort((a: TFile, b: TFile) => {
+            let aVal: any, bVal: any;
+            switch (sortBy) {
+                case 'name':
+                    aVal = a.name;
+                    bVal = b.name;
+                    break;
+                case 'created':
+                    aVal = a.stat.ctime;
+                    bVal = b.stat.ctime;
+                    break;
+                case 'modified':
+                    aVal = a.stat.mtime;
+                    bVal = b.stat.mtime;
+                    break;
+                default:
+                    aVal = a.name;
+                    bVal = b.name;
+            }
+            if (sortOrder === 'asc') {
+                if (aVal < bVal) return -1;
+                if (aVal > bVal) return 1;
+                return 0;
+            } else {
+                if (aVal > bVal) return -1;
+                if (aVal < bVal) return 1;
+                return 0;
+            }
+        });
 
         if (taggedFiles.length === 0) {
             container.createEl('p', { text: 'No files with this tag.' });
