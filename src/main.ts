@@ -38,6 +38,19 @@ export default class PortalsPlugin extends Plugin {
                 this.setupLeftSidebar();
             }, 200);
         }
+
+        // Track recent files
+        this.registerEvent(this.app.workspace.on('file-open', (file) => {
+            if (file) {
+                this.updateRecentFiles(file.path);
+                
+                this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+                    if (leaf.view instanceof PortalsView) {
+                        leaf.view.refreshRecentTab();
+                    }
+                });
+            }
+        }));
     }
 
     async onunload() { }
@@ -110,6 +123,16 @@ export default class PortalsPlugin extends Plugin {
         }
         // Make the Portals leaf active (brings it to front)
         workspace.revealLeaf(portalsLeaf);
+    }
+
+    async updateRecentFiles(filePath: string) {
+        const maxRecent = 20;
+        let recent = this.settings.recentFilesList || [];
+        recent = recent.filter(p => p !== filePath);
+        recent.unshift(filePath);
+        if (recent.length > maxRecent) recent.pop();
+        this.settings.recentFilesList = recent;
+        await this.saveSettings();
     }
 
     // ========== MANUAL CLEANUP ==========

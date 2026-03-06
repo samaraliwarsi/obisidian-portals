@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, TFolder, Notice } from 'obsidian';
 import PortalsPlugin from './main';
 import { IconPickerModal } from './iconPicker';
+import { PortalsView, VIEW_TYPE_PORTALS } from 'view';
 
 export interface SpaceConfig {
     path: string;
@@ -22,6 +23,13 @@ export interface SpacesSettings {
     sortBy: 'name' | 'created' | 'modified';
     sortOrder: 'asc' | 'desc';
     showInactiveTabNames: boolean;
+    secondaryPanelHeight: number;
+    secondaryPanelCollapsed: boolean;
+    showRecentFiles: boolean;
+    recentFilesList: string[];
+    splitViewTabs: string[];
+    activeSplitTab: string;
+    splitViewTabIcons: Record<string, string>
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -36,7 +44,17 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     tabColorEnabled: true,
     sortBy: 'name',
     showInactiveTabNames: false,
-    sortOrder: 'asc'
+    sortOrder: 'asc',
+    secondaryPanelHeight: 200,
+    secondaryPanelCollapsed: false,
+    showRecentFiles: false,
+    recentFilesList: [],
+    splitViewTabs: ['recent', 'folder-notes'],
+    activeSplitTab: 'recent',
+    splitViewTabIcons: {
+        recent: 'clock',
+        'folder-notes': 'note'
+    },
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -109,6 +127,22 @@ export class SpacesSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.display();
                 }));
+        
+        new Setting(containerEl)
+        .setName('Show recent files pane')
+        .setDesc('Display a list of recently opened files in a separate panel below the file tree.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.showRecentFiles)
+            .onChange(async (value) => {
+                this.plugin.settings.showRecentFiles = value;
+                await this.plugin.saveSettings();
+                this.display();
+                this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+                    if (leaf.view instanceof PortalsView) {
+                        leaf.view.render();
+                    }
+                })
+            }));
 
         // ===== PIN VAULT ROOT =====
         const pinSetting = new Setting(containerEl)

@@ -5007,6 +5007,137 @@ justify-content: flex-start !important;
 
 }
 
+/*===CSS for Split Panel===*/
+/* Split container */
+.portals-split-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.portals-split-content {
+    padding: 0 8px;
+    overflow: auto;
+    height: calc(100% - 40px);
+    min-height: 50px;
+    box-sizing: border-box;
+}
+
+/* Main panel */
+.portals-main-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+}
+
+.portals-tree-container {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+/* Splitter */
+.portals-splitter {
+    height: 6px;
+    cursor: ns-resize;
+    background: transparent;
+    flex-shrink: 0;
+    position: relative;
+    margin: 0;
+}
+
+.portals-splitter::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 2px; /* center the 1px line */
+    height: 1px;
+    background: var(--background-modifier-border);
+    transition: background 0.1s;
+}
+
+.portals-splitter:hover {
+    background: var(--interactive-accent);
+}
+
+/* Secondary panel */
+.portals-secondary-panel {
+    flex-shrink: 0;
+    overflow: hidden;
+    border-top: 1px solid var(--background-modifier-border);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.portals-secondary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--background-secondary);
+    height: 40px;
+    box-sizing: border-box;
+}
+
+.portals-split-tabs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 0 4px;
+}
+
+.portals-split-tab {
+  display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    white-space: nowrap;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    transition: background-color 0.1s, border-color 0.1s, color 0.1s;
+    user-select: none;
+    flex-shrink: 0;
+    box-shadow: none;    
+}
+.portals-split-tab:hover {
+    background: rgba(128, 128, 128, 0.15);
+    color: var(--text-normal);
+}
+
+.portals-split-tab.is-active {
+  background: transparent;
+  color: var(--text-normal);
+  border-bottom-color: var(--interactive-accent)
+}
+
+.portals-split-tab i {
+  font-size: 16px;
+}
+
+.portals-collapse-icon {
+    font-size: 12px;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.portals-recent-content {
+    padding: 0 8px;
+    overflow: auto;
+    height: calc(100% - 40px);
+    min-height: 50px;
+}
+
+/* Bottom padding for vault switcher */
+.portals-container {
+    padding-bottom: 4px;
+}
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */
 
 .portals-container {
