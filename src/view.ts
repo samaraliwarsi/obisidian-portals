@@ -161,7 +161,8 @@ export class PortalsView extends ItemView {
             secondaryPanelCollapsed: s.secondaryPanelCollapsed,
             secondaryPanelHeight: s.secondaryPanelHeight,
             activeSplitTab: s.activeSplitTab,
-            splitViewTabs: s.splitViewTabs?.join(',') || ''
+            splitViewTabs: s.splitViewTabs?.join(',') || '',
+            recentFilesList: s.recentFilesList?.join(',') || ''
         });
     }
 

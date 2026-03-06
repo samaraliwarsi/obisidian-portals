@@ -1,4 +1,4 @@
-import { Plugin, TFolder } from 'obsidian';
+import { Plugin, TFolder, TFile } from 'obsidian';
 import { PortalsView, VIEW_TYPE_PORTALS } from './view';
 import { SpacesSettings, DEFAULT_SETTINGS, SpacesSettingTab } from './settings';
 
@@ -49,6 +49,20 @@ export default class PortalsPlugin extends Plugin {
                         leaf.view.refreshRecentTab();
                     }
                 });
+            }
+        }));
+
+        // Track file rename
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+            if (file instanceof TFile) {
+                this.updateRecentFilesOnRename(oldPath, file.path);
+            }
+        }));
+
+        // Track file delete
+        this.registerEvent(this.app.vault.on('delete', (file) => {
+            if (file instanceof TFile) {
+                this.removeRecentFile(file.path);
             }
         }));
     }
@@ -131,6 +145,23 @@ export default class PortalsPlugin extends Plugin {
         recent = recent.filter(p => p !== filePath);
         recent.unshift(filePath);
         if (recent.length > maxRecent) recent.pop();
+        this.settings.recentFilesList = recent;
+        await this.saveSettings();
+    }
+
+    async updateRecentFilesOnRename(oldPath: string, newPath: string) {
+        let recent = this.settings.recentFilesList || [];
+        const index = recent.indexOf(oldPath);
+        if (index !== -1) {
+            recent[index] = newPath;
+            this.settings.recentFilesList = recent;
+            await this.saveSettings();
+        }
+    }
+
+    async removeRecentFile(path: string) {
+        let recent = this.settings.recentFilesList || [];
+        recent = recent.filter(p => p !== path);
         this.settings.recentFilesList = recent;
         await this.saveSettings();
     }
