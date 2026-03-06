@@ -364,7 +364,6 @@ export class PortalsView extends ItemView {
             secondaryHeader.style.display = 'flex';
             secondaryHeader.style.justifyContent = 'space-between';
             secondaryHeader.style.alignItems = 'center';
-            secondaryHeader.style.background = 'var(--background-secondary)';
             secondaryHeader.style.height = '40px';
             secondaryHeader.style.boxSizing = 'border-box';
 
@@ -400,7 +399,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
                 tabBtn.addEventListener('click', () => {
                     this.plugin.settings.activeSplitTab = tabId;
-                    this.plugin.saveSettings();
+                    this.plugin.saveData(this.plugin.settings);
                     this.renderSplitTabContent(secondaryPanel, tabId);
                     // Update active style
                     tabContainer.querySelectorAll('.portals-split-tab').forEach(el => {
@@ -427,13 +426,17 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
             const panelHeight = this.plugin.settings.secondaryPanelHeight || 200;
 
             if (isCollapsed) {
-                secondaryPanel.style.height = '40px';
+                secondaryPanel.style.height = '42px';
                 splitContent.style.display = 'none';
                 splitter.style.display = 'none';
+                secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border';
+                secondaryPanel.classList.add('is-collapsed');
             } else {
                 secondaryPanel.style.height = panelHeight + 'px';
                 splitContent.style.display = 'block';
                 splitter.style.display = 'block';
+                secondaryPanel.style.borderTop = 'none';
+                secondaryPanel.classList.remove('is-collapsed');
             }
 
             // Toggle collapse on icon click
@@ -442,17 +445,19 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 const newCollapsed = !this.plugin.settings.secondaryPanelCollapsed;
                 this.plugin.settings.secondaryPanelCollapsed = newCollapsed;
                 if (newCollapsed) {
-                    secondaryPanel.style.height = '40px';
+                    secondaryPanel.style.height = '42px';
                     splitContent.style.display = 'none';
                     splitter.style.display = 'none';
                     collapseIcon.innerHTML = '▲';
+                    secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border';
                 } else {
                     secondaryPanel.style.height = panelHeight + 'px';
                     splitContent.style.display = 'block';
                     splitter.style.display = 'block';
                     collapseIcon.innerHTML = '▼';
+                    secondaryPanel.style.borderTop = 'none';
                 }
-                this.plugin.saveSettings();
+                this.plugin.saveData(this.plugin.settings);
             });
 
             // Make splitter draggable
@@ -471,18 +476,20 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 const maxHeight = splitContainerRect.height - 50;
                 let newHeight = Math.min(maxHeight, Math.max(minHeight, splitContainerRect.height - relativeY));
                 secondaryPanel.style.height = newHeight + 'px';
+                secondaryPanel.style.borderTop = 'none';
                 splitContent.style.display = 'block';
                 splitter.style.display = 'block';
                 this.plugin.settings.secondaryPanelHeight = newHeight;
                 this.plugin.settings.secondaryPanelCollapsed = false;
                 collapseIcon.innerHTML = '▼';
-                this.plugin.saveSettings();
+                this.plugin.saveData(this.plugin.settings);
             });
 
             document.addEventListener('mouseup', () => {
                 if (this.isDraggingSplitter) {
                     this.isDraggingSplitter = false;
                     document.body.style.cursor = '';
+                    this.plugin.saveData(this.plugin.settings);
                 }
             });
 
@@ -576,7 +583,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 const setSort = (by: 'name' | 'created' | 'modified', order: 'asc' | 'desc') => {
                     this.plugin.settings.sortBy = by;
                     this.plugin.settings.sortOrder = order;
-                    this.plugin.saveSettings();
+                    this.plugin.saveData(this.plugin.settings);
                     this.renderContent();
                 };
                 menu.addItem(item => item
@@ -612,7 +619,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 const currentSpace = this.plugin.settings.selectedSpace;
                 if (!currentSpace) return;
                 this.plugin.settings.openFolders = [currentSpace.path];
-                await this.plugin.saveSettings();
+                await this.plugin.saveData(this.plugin.settings);
                 this.renderContent();
             });
 
@@ -1149,7 +1156,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
             if (!this.plugin.settings.openFolders.includes(folder.path)) {
                 this.plugin.settings.openFolders.push(folder.path);
-                await this.plugin.saveSettings();
+                await this.plugin.saveData(this.plugin.settings);
             }
 
             await this.renderContent();
@@ -1174,7 +1181,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
             if (!this.plugin.settings.openFolders.includes(parent.path)) {
                 this.plugin.settings.openFolders.push(parent.path);
-                await this.plugin.saveSettings();
+                await this.plugin.saveData(this.plugin.settings);
             }
 
             await this.renderContent();

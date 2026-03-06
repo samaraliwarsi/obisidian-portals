@@ -40,29 +40,23 @@ export default class PortalsPlugin extends Plugin {
         }
 
         // Track recent files
-        this.registerEvent(this.app.workspace.on('file-open', (file) => {
+        this.registerEvent(this.app.workspace.on('file-open', async (file) => {
             if (file) {
-                this.updateRecentFiles(file.path);
-                
-                this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
-                    if (leaf.view instanceof PortalsView) {
-                        leaf.view.refreshRecentTab();
-                    }
-                });
+                await this.updateRecentFiles(file.path);
             }
         }));
 
         // Track file rename
-        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+        this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
             if (file instanceof TFile) {
-                this.updateRecentFilesOnRename(oldPath, file.path);
+                await this.updateRecentFilesOnRename(oldPath, file.path);
             }
         }));
 
         // Track file delete
-        this.registerEvent(this.app.vault.on('delete', (file) => {
+        this.registerEvent(this.app.vault.on('delete', async (file) => {
             if (file instanceof TFile) {
-                this.removeRecentFile(file.path);
+                await this.removeRecentFile(file.path);
             }
         }));
     }
@@ -139,18 +133,23 @@ export default class PortalsPlugin extends Plugin {
         workspace.revealLeaf(portalsLeaf);
     }
 
+    private refreshAllRecentTabs() {
+        this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+            if (leaf.view instanceof PortalsView) {
+                leaf.view.refreshRecentTab();
+            }
+        });
+    }
+
     async updateRecentFiles(filePath: string) {
         const maxRecent = 20;
         let recent = this.settings.recentFilesList || [];
         recent = recent.filter(p => p !== filePath);
         recent.unshift(filePath);
         if (recent.length > maxRecent) recent.pop();
+        this.settings.recentFilesList = recent;
         await this.saveData(this.settings);
-        this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
-            if (leaf.view instanceof PortalsView) {
-                leaf.view.refreshRecentTab();
-            }
-        });
+        this.refreshAllRecentTabs();
     }
 
     async updateRecentFilesOnRename(oldPath: string, newPath: string) {
@@ -160,11 +159,7 @@ export default class PortalsPlugin extends Plugin {
             recent[index] = newPath;
             this.settings.recentFilesList = recent;
             await this.saveData(this.settings);
-            this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
-                if (leaf.view instanceof PortalsView) {
-                    leaf.view.refreshRecentTab();
-                }
-            });
+            this.refreshAllRecentTabs();
         }
     }
 
@@ -173,11 +168,7 @@ export default class PortalsPlugin extends Plugin {
         recent = recent.filter(p => p !== path);
         this.settings.recentFilesList = recent;
         await this.saveData(this.settings);
-        this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
-            if (leaf.view instanceof PortalsView) {
-                leaf.view.refreshRecentTab();
-            }
-        });
+        this.refreshAllRecentTabs();
     }
 
     // ========== MANUAL CLEANUP ==========

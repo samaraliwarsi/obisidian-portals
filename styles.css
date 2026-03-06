@@ -5047,28 +5047,19 @@ justify-content: flex-start !important;
     flex-shrink: 0;
     position: relative;
     margin: 0;
+    border-top: 1.5px solid var(--background-modifier-border);
+    transition: border-color 0.1;
 }
 
-.portals-splitter::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 2px; /* center the 1px line */
-    height: 1px;
-    background: var(--background-modifier-border);
-    transition: background 0.1s;
-}
-
-.portals-splitter:hover {
+.portals-split-tab:hover {
     background: var(--interactive-accent);
+    background: rgba(128, 128, 128, 0.1);
 }
 
 /* Secondary panel */
 .portals-secondary-panel {
     flex-shrink: 0;
     overflow: hidden;
-    border-top: 1px solid var(--background-modifier-border);
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
@@ -5076,7 +5067,7 @@ justify-content: flex-start !important;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: var(--background-secondary);
+    background: transparent;
     height: 40px;
     box-sizing: border-box;
 }
