@@ -145,8 +145,12 @@ export default class PortalsPlugin extends Plugin {
         recent = recent.filter(p => p !== filePath);
         recent.unshift(filePath);
         if (recent.length > maxRecent) recent.pop();
-        this.settings.recentFilesList = recent;
-        await this.saveSettings();
+        await this.saveData(this.settings);
+        this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+            if (leaf.view instanceof PortalsView) {
+                leaf.view.refreshRecentTab();
+            }
+        });
     }
 
     async updateRecentFilesOnRename(oldPath: string, newPath: string) {
@@ -155,7 +159,12 @@ export default class PortalsPlugin extends Plugin {
         if (index !== -1) {
             recent[index] = newPath;
             this.settings.recentFilesList = recent;
-            await this.saveSettings();
+            await this.saveData(this.settings);
+            this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+                if (leaf.view instanceof PortalsView) {
+                    leaf.view.refreshRecentTab();
+                }
+            });
         }
     }
 
@@ -163,7 +172,12 @@ export default class PortalsPlugin extends Plugin {
         let recent = this.settings.recentFilesList || [];
         recent = recent.filter(p => p !== path);
         this.settings.recentFilesList = recent;
-        await this.saveSettings();
+        await this.saveData(this.settings);
+        this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+            if (leaf.view instanceof PortalsView) {
+                leaf.view.refreshRecentTab();
+            }
+        });
     }
 
     // ========== MANUAL CLEANUP ==========
