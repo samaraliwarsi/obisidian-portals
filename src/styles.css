@@ -5129,6 +5129,15 @@ justify-content: flex-start !important;
 .portals-container {
     padding-bottom: 4px;
 }
+
+/*===END of CSS for Split Panel===*/
+
+/* Modal selection highlight */
+.add-portal-item.is-selected {
+    background: var(--interactive-accent) !important;
+    color: var(--text-on-accent) !important;
+}
+
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */
 
 .portals-container {
