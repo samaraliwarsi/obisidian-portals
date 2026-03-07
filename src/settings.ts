@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, TFolder, Notice, Modal } from 'obsidian';
 import PortalsPlugin from './main';
 import { IconPickerModal } from './iconPicker';
-import { PortalsView, VIEW_TYPE_PORTALS } from 'view';
+import { PortalsView, VIEW_TYPE_PORTALS } from './view';
 
 export interface SpaceConfig {
     path: string;
@@ -66,10 +66,9 @@ export class SpacesSettingTab extends PluginSettingTab {
         const scrollTop = containerEl.scrollTop;
         containerEl.empty();
 
-        // Main header
         containerEl.createEl('h2', { text: 'Portals Settings' });
 
-        // ---- Settings toggles (unchanged) ----
+        // ---- Settings toggles ----
         new Setting(containerEl)
             .setName('Replace file explorer in left sidebar')
             .setDesc('When enabled, the Portals pane will take the place of the default file explorer in the left sidebar on startup. The file explorer can still be opened via commands if needed.')
@@ -131,7 +130,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     });
                 }));
 
-        // ---- PIN VAULT ROOT (two‑row layout) ----
+        // ---- PIN VAULT ROOT ----
         const pinSetting = new Setting(containerEl)
             .setName('Pin vault root')
             .setDesc('Show the vault root as the first tab (always on the left). You can customize its icon and color below.');
@@ -166,19 +165,20 @@ export class SpacesSettingTab extends PluginSettingTab {
                 this.display();
             }));
 
-                if (this.plugin.settings.pinVaultRoot) {
+        // Vault root customisation (compact controls)
+        if (this.plugin.settings.pinVaultRoot) {
             const rootSpace = this.plugin.settings.spaces.find(s => s.path === '/' && s.type === 'folder');
             if (rootSpace) {
-                // Use the same inline layout as regular portals
                 const controlEl = pinSetting.controlEl;
+                controlEl.empty();
                 controlEl.style.display = 'flex';
-                controlEl.style.alignItems = 'center';
-                controlEl.style.gap = '8px';
                 controlEl.style.flexWrap = 'wrap';
-                controlEl.style.marginTop = '8px';
+                controlEl.style.gap = '8px';
+                controlEl.style.alignItems = 'center';
+                controlEl.style.justifyContent = 'flex-start';
 
-                // "Choose icon" button
-                const iconBtn = controlEl.createEl('button', { text: 'Choose icon' });
+                const iconBtn = controlEl.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Choose icon' } });
+                iconBtn.innerHTML = `<i class="ph ph-${rootSpace.icon}"></i>`;
                 iconBtn.addEventListener('click', () => {
                     new IconPickerModal(this.app, async (iconName) => {
                         rootSpace.icon = iconName;
@@ -187,12 +187,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     }).open();
                 });
 
-                // Color picker wrapper (same as addPortalControls)
-                const colorWrapper = controlEl.createDiv({ cls: 'portals-color-wrapper' });
-                colorWrapper.style.display = 'flex';
-                colorWrapper.style.alignItems = 'center';
-                colorWrapper.style.gap = '8px';
-                colorWrapper.style.flexWrap = 'wrap';
+                const colorContainer = controlEl.createDiv({ cls: 'portals-color-compact' });
 
                 let initialHex = '#ff0000';
                 let initialOpacity = 1;
@@ -206,32 +201,27 @@ export class SpacesSettingTab extends PluginSettingTab {
                     }
                 }
 
-                const colorInput = colorWrapper.createEl('input', { type: 'color', value: initialHex });
-                colorInput.style.width = '40px';
-                colorInput.style.height = '30px';
+                const colorInput = colorContainer.createEl('input', { type: 'color', value: initialHex });
+                colorInput.style.width = '32px';
+                colorInput.style.height = '24px';
                 colorInput.style.padding = '0';
                 colorInput.style.border = 'none';
                 colorInput.style.cursor = 'pointer';
 
-                const opacitySlider = colorWrapper.createEl('input', {
+                const opacitySlider = colorContainer.createEl('input', {
                     type: 'range',
                     value: String(initialOpacity * 100),
                     attr: { min: '0', max: '100', step: '1' }
                 });
-                opacitySlider.style.width = '80px';
+                opacitySlider.style.width = '60px';
 
-                const opacityValue = colorWrapper.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
-                opacityValue.style.minWidth = '40px';
+                const opacityValue = colorContainer.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
                 opacityValue.style.fontSize = '12px';
+                opacityValue.style.minWidth = '40px';
 
-                const preview = colorWrapper.createEl('span', { cls: 'portals-color-preview' });
-                preview.style.width = '24px';
-                preview.style.height = '24px';
-                preview.style.borderRadius = '4px';
-                preview.style.border = '1px solid var(--background-modifier-border)';
-                preview.style.backgroundColor = rootSpace.color !== 'transparent' ? rootSpace.color : 'transparent';
+                const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
 
-                const updateRootColor = () => {
+                const updateColor = () => {
                     const hex = colorInput.value;
                     const opacity = parseInt(opacitySlider.value) / 100;
                     const r = parseInt(hex.slice(1,3), 16);
@@ -244,12 +234,12 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.plugin.saveSettings();
                 };
 
-                colorInput.addEventListener('input', updateRootColor);
-                opacitySlider.addEventListener('input', updateRootColor);
+                colorInput.addEventListener('input', updateColor);
+                opacitySlider.addEventListener('input', updateColor);
             }
         }
 
-        // ---- ADD PORTAL BUTTON (above categories) ----
+        // ---- ADD PORTAL BUTTON ----
         new Setting(containerEl)
             .setName('Add new portal')
             .setDesc('Add a folder or tag as a portal tab.')
@@ -336,30 +326,46 @@ export class SpacesSettingTab extends PluginSettingTab {
             summary.createSpan({ text: title });
 
             for (const portal of portals) {
-                const setting = new Setting(details)
-                    .setName(getPortalDisplayName(portal))
-                    .setDesc(`${portal.type} · ${portal.path}`);  // ONLY type and path
+                const setting = new Setting(details);
 
-                // Icon button + icon name (no extra "Current:" label)
-                setting.addButton(btn => btn
-                    .setButtonText('Choose icon')
-                    .onClick(() => {
-                        new IconPickerModal(this.app, (iconName) => {
-                            portal.icon = iconName;
-                            this.plugin.saveSettings();
-                            this.display();
-                        }).open();
-                    }));
+                // Left side: name and path (with truncation)
+                const infoDiv = setting.infoEl;
+                infoDiv.empty();
+                infoDiv.style.display = 'flex';
+                infoDiv.style.flexDirection = 'column';
+                infoDiv.style.minWidth = '0';
 
-                // Display current icon name
-                setting.descEl.createSpan({ text: `  ${portal.icon}`, cls: 'mod-cta' });
+                const nameSpan = infoDiv.createEl('span', { cls: 'portals-portal-name' });
+                nameSpan.textContent = getPortalDisplayName(portal);
 
-                // Color picker wrapper
-                const colorWrapper = setting.controlEl.createDiv({ cls: 'portals-color-wrapper' });
-                colorWrapper.style.display = 'flex';
-                colorWrapper.style.alignItems = 'center';
-                colorWrapper.style.gap = '8px';
-                colorWrapper.style.flexWrap = 'wrap';
+                const pathSpan = infoDiv.createEl('span', { cls: 'portals-portal-path' });
+                pathSpan.textContent = `${portal.type} · ${portal.path}`;
+
+                // Right side: controls
+                const controlDiv = setting.controlEl;
+                controlDiv.empty();
+                controlDiv.addClass('portals-portal-controls');
+
+                // Row 1: icon name badge + icon button
+                const iconRow = controlDiv.createDiv({ cls: 'portals-icon-row' });
+
+                const iconBadge = iconRow.createEl('span', { cls: 'portals-icon-badge' });
+                iconBadge.textContent = portal.icon;
+
+                const iconBtn = iconRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Choose icon' } });
+                iconBtn.innerHTML = `<i class="ph ph-${portal.icon}"></i>`;
+                iconBtn.addEventListener('click', () => {
+                    new IconPickerModal(this.app, (iconName) => {
+                        portal.icon = iconName;
+                        this.plugin.saveSettings();
+                        this.display();
+                    }).open();
+                });
+
+                // Row 2: color picker (compact) + trash button
+                const colorRow = controlDiv.createDiv({ cls: 'portals-color-row' });
+
+                const colorContainer = colorRow.createDiv({ cls: 'portals-color-compact' });
 
                 let initialHex = '#ff0000';
                 let initialOpacity = 1;
@@ -373,30 +379,25 @@ export class SpacesSettingTab extends PluginSettingTab {
                     }
                 }
 
-                const colorInput = colorWrapper.createEl('input', { type: 'color', value: initialHex });
-                colorInput.style.width = '40px';
-                colorInput.style.height = '30px';
+                const colorInput = colorContainer.createEl('input', { type: 'color', value: initialHex });
+                colorInput.style.width = '32px';
+                colorInput.style.height = '24px';
                 colorInput.style.padding = '0';
                 colorInput.style.border = 'none';
                 colorInput.style.cursor = 'pointer';
 
-                const opacitySlider = colorWrapper.createEl('input', {
+                const opacitySlider = colorContainer.createEl('input', {
                     type: 'range',
                     value: String(initialOpacity * 100),
                     attr: { min: '0', max: '100', step: '1' }
                 });
-                opacitySlider.style.width = '80px';
+                opacitySlider.style.width = '60px';
 
-                const opacityValue = colorWrapper.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
-                opacityValue.style.minWidth = '40px';
+                const opacityValue = colorContainer.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
                 opacityValue.style.fontSize = '12px';
+                opacityValue.style.minWidth = '40px';
 
-                const preview = colorWrapper.createEl('span', { cls: 'portals-color-preview' });
-                preview.style.width = '24px';
-                preview.style.height = '24px';
-                preview.style.borderRadius = '4px';
-                preview.style.border = '1px solid var(--background-modifier-border)';
-                preview.style.backgroundColor = portal.color !== 'transparent' ? portal.color : 'transparent';
+                const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
 
                 const updateColor = () => {
                     const hex = colorInput.value;
@@ -415,20 +416,18 @@ export class SpacesSettingTab extends PluginSettingTab {
                 opacitySlider.addEventListener('input', updateColor);
 
                 // Trash button
-                setting.addButton(btn => btn
-                    .setIcon('trash')
-                    .setWarning()
-                    .setTooltip('Remove this portal')
-                    .onClick(async () => {
-                        this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => s !== portal);
-                        if (this.plugin.settings.selectedSpace?.path === portal.path && this.plugin.settings.selectedSpace?.type === portal.type) {
-                            this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0] 
-                                ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
-                                : null;
-                        }
-                        await this.plugin.saveSettings();
-                        this.display();
-                    }));
+                const trashBtn = colorRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Remove portal' } });
+                trashBtn.innerHTML = `<i class="ph ph-trash"></i>`;
+                trashBtn.addEventListener('click', async () => {
+                    this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => s !== portal);
+                    if (this.plugin.settings.selectedSpace?.path === portal.path && this.plugin.settings.selectedSpace?.type === portal.type) {
+                        this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0] 
+                            ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
+                            : null;
+                    }
+                    await this.plugin.saveSettings();
+                    this.display();
+                });
             }
         };
 
@@ -464,7 +463,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        // Restore scroll
         setTimeout(() => {
             const maxScroll = containerEl.scrollHeight - containerEl.clientHeight;
             containerEl.scrollTop = Math.min(scrollTop, maxScroll);
@@ -540,7 +538,6 @@ class AddPortalModal extends Modal {
         contentEl.empty();
         contentEl.createEl('h2', { text: 'Add a new portal' });
 
-        // Tab bar
         const tabBar = contentEl.createDiv({ cls: 'add-portal-tab-bar' });
         tabBar.style.display = 'flex';
         tabBar.style.gap = '4px';
@@ -663,5 +660,7 @@ class AddPortalModal extends Modal {
         }
     }
 
-    onClose() { this.contentEl.empty(); }
+    onClose() {
+        this.contentEl.empty();
+    }
 }
