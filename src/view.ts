@@ -384,6 +384,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
             tabs.forEach(tabId => {
                 const tabBtn = tabContainer.createEl('div', { cls: 'portals-split-tab' });
+                tabBtn.dataset.tabId = tabId;
 
                 const iconName = icons[tabId] || 'file';
                 tabBtn.innerHTML = `<i class="ph ph-${iconName}"></i>`;
@@ -400,12 +401,23 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 tabBtn.addEventListener('click', () => {
                     this.plugin.settings.activeSplitTab = tabId;
                     this.plugin.saveData(this.plugin.settings);
-                    this.renderSplitTabContent(secondaryPanel, tabId);
-                    // Update active style
-                    tabContainer.querySelectorAll('.portals-split-tab').forEach(el => {
-                        el.removeClass('is-active');
+
+                    tabContainer.querySelectorAll('.portals-split-tab').forEach(t => {
+                        const tabElements = t as HTMLElement;
+                        const tId = tabElements.dataset.tabId;
+                        if (!tId) return;
+                        const icon = icons[tId] || 'file';
+                        tabElements.empty();
+                        tabElements.innerHTML = `<i class="ph ph-${icon}"></i>`;
+                        if (tId === tabId || this.plugin.settings.showInactiveTabNames) {
+                            const span = document.createElement('span');
+                            span.textContent = tId.charAt(0).toUpperCase() + tId.slice(1);
+                            tabElements.appendChild(span);
+                        }
+                        tabElements.removeClass('is-active');
                     });
-                    tabBtn.addClass('is-active') 
+                    tabBtn.addClass('is-active');
+                    this.renderSplitTabContent(secondaryPanel, tabId);
                 });
             });
 
