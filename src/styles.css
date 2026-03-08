@@ -5138,9 +5138,11 @@ justify-content: flex-start !important;
     color: var(--text-on-accent) !important;
 }
 
-/* ===== Compact settings page ===== */
+/* ===== Settings page ===== */
 
-/* Desktop / base styles */
+/* ----- Desktop / base styles ----- */
+
+/* Portal name (folder/tag name) */
 .portals-portal-name {
   font-weight: 500;
   white-space: nowrap;
@@ -5149,6 +5151,7 @@ justify-content: flex-start !important;
   max-width: 200px;
 }
 
+/* Portal path (type + path) */
 .portals-portal-path {
   font-size: 0.85em;
   color: var(--text-muted);
@@ -5158,10 +5161,10 @@ justify-content: flex-start !important;
   max-width: 250px;
 }
 
-/* Main controls container – side by side on desktop */
+/* Main controls container – rows side by side on desktop */
 .portals-portal-controls {
   display: flex;
-  flex-direction: row;          /* rows side by side on desktop */
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
@@ -5178,7 +5181,7 @@ justify-content: flex-start !important;
   align-items: center;
 }
 
-/* Icon badge */
+/* Icon name badge */
 .portals-icon-badge {
   font-size: 0.8em;
   background: var(--background-modifier-hover);
@@ -5187,7 +5190,7 @@ justify-content: flex-start !important;
   white-space: nowrap;
 }
 
-/* Compact color picker */
+/* Compact color picker container */
 .portals-color-compact {
   display: flex;
   align-items: center;
@@ -5195,6 +5198,7 @@ justify-content: flex-start !important;
   flex-wrap: wrap;
 }
 
+/* Color input (the color swatch) */
 .portals-color-compact input[type="color"] {
   width: 32px;
   height: 24px;
@@ -5203,11 +5207,30 @@ justify-content: flex-start !important;
   cursor: pointer;
 }
 
-.portals-color-compact input[type="range"] {
+/* Number input for opacity */
+.portals-color-compact input[type="number"] {
   width: 60px;
-  height: 4px;
+  text-align: center;
+  padding: 4px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9em;
 }
 
+/* Remove spinner arrows for number input */
+.portals-color-compact input[type="number"]::-webkit-outer-spin-button,
+.portals-color-compact input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.portals-color-compact input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Preview swatch (shows the actual color) */
 .portals-color-compact .portals-color-preview {
   width: 20px;
   height: 20px;
@@ -5215,9 +5238,22 @@ justify-content: flex-start !important;
   border: 1px solid var(--background-modifier-border);
 }
 
-/* Mobile overrides */
+/* Percent sign after number input */
+.portals-color-compact span {
+  font-size: 0.9em;
+  margin-left: 2px;
+}
+
+/* Make section headings same size as setting titles */
+.vertical-tab-content details summary {
+    font-size: var(--font-ui-small);  /* Obsidian's default for setting titles */
+    font-weight: 400 !important;                 /* normal weight (remove bold) */
+    padding: 4px 0;                   /* adjust spacing as needed */
+}
+
+/* ----- Mobile overrides (max-width: 768px) ----- */
 @media (max-width: 768px) {
-  /* Stack rows vertically */
+  /* Stack the two rows vertically */
   .portals-portal-controls {
     flex-direction: column;
     align-items: flex-start;
@@ -5230,13 +5266,13 @@ justify-content: flex-start !important;
     justify-content: flex-start;
   }
 
+  /* Center the color row (number input, preview, trash) */
   .portals-color-row {
     margin-top: 4px;
-    width: 100%;
     justify-content: center;
   }
 
-  /* Larger pill */
+  /* Slightly larger icon badge */
   .portals-icon-badge {
     padding: 4px 6px;
     font-size: 0.8em;
@@ -5244,23 +5280,25 @@ justify-content: flex-start !important;
 
   /* Larger color picker elements */
   .portals-color-compact {
-    min-height: 40px;
+    gap: 6px; /* a bit more spacing */
   }
 
   .portals-color-compact input[type="color"] {
     width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    --webkit-appearance: none;
+    height: 32px;                /* make it square */
+    border-radius: 8px;          /* rounded corners */
+    -webkit-appearance: none;
     appearance: none;
     padding: 0;
     border: 1px solid var(--background-modifier-border);
     background: none;
   }
 
-  .portals-color-compact input[type="range"] {
-    width: 100px !important;
-    height: 8px;
+  .portals-color-compact input[type="number"] {
+    width: 80px;
+    height: 40px;
+    font-size: 1em;
+    padding: 4px 8px;
   }
 
   .portals-color-compact .portals-color-preview {
@@ -5268,10 +5306,18 @@ justify-content: flex-start !important;
     height: 30px;
   }
 
-  /* Larger trash icon */
+  /* Percent sign next to number input */
+  .portals-color-compact span {
+    font-size: 1.2em;
+    margin-left: 4px;
+  }
+
+  /* Larger trash icon (and any other clickable icons) */
   .clickable-icon {
     width: 40px;
     height: 40px;
+    /* Obsidian likely sets font-size automatically, but you can add: */
+    font-size: 1.2em;
   }
 }
 

@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting, TFolder, Notice, Modal } from 'obsidian
 import PortalsPlugin from './main';
 import { IconPickerModal } from './iconPicker';
 import { PortalsView, VIEW_TYPE_PORTALS } from './view';
+import { iconNames } from 'iconMap';
 
 export interface SpaceConfig {
     path: string;
@@ -169,75 +170,94 @@ export class SpacesSettingTab extends PluginSettingTab {
         if (this.plugin.settings.pinVaultRoot) {
             const rootSpace = this.plugin.settings.spaces.find(s => s.path === '/' && s.type === 'folder');
             if (rootSpace) {
-                const controlEl = pinSetting.controlEl;
-                controlEl.empty();
-                controlEl.style.display = 'flex';
-                controlEl.style.flexWrap = 'wrap';
-                controlEl.style.gap = '8px';
-                controlEl.style.alignItems = 'center';
-                controlEl.style.justifyContent = 'flex-start';
+                const rootCustomSetting = new Setting(containerEl)
+                .setName('Vault root appearance')
+                .setDesc('Customize icon and color for the pinned vault root tab.');
 
-                const iconBtn = controlEl.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Choose icon' } });
-                iconBtn.innerHTML = `<i class="ph ph-${rootSpace.icon}"></i>`;
-                iconBtn.addEventListener('click', () => {
-                    new IconPickerModal(this.app, async (iconName) => {
-                        rootSpace.icon = iconName;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    }).open();
-                });
+            const controlEl = rootCustomSetting.controlEl;
+            controlEl.empty();
+            controlEl.addClass('portals-portal-controls'); // reuse the same class for consistency
 
-                const colorContainer = controlEl.createDiv({ cls: 'portals-color-compact' });
+            // ---- Icon row (icon button only) ----
+            const iconRow = controlEl.createDiv({ cls: 'portals-icon-row' });
 
-                let initialHex = '#ff0000';
-                let initialOpacity = 1;
-                if (rootSpace.color && rootSpace.color !== 'transparent') {
-                    const rgba = rootSpace.color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-                    if (rgba) {
-                        initialHex = `#${Number(rgba[1]).toString(16).padStart(2,'0')}${Number(rgba[2]).toString(16).padStart(2,'0')}${Number(rgba[3]).toString(16).padStart(2,'0')}`;
-                        initialOpacity = rgba[4] ? parseFloat(rgba[4]) : 1;
-                    } else if (rootSpace.color.startsWith('#')) {
-                        initialHex = rootSpace.color;
-                    }
+            // Icon button
+            const iconBtn = iconRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Choose icon' } });
+            iconBtn.innerHTML = `<i class="ph ph-${rootSpace.icon}"></i>`;
+            iconBtn.addEventListener('click', () => {
+                new IconPickerModal(this.app, async (iconName) => {
+                    rootSpace.icon = iconName;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }).open();
+            });
+
+            // ---- Color row (color picker, number input, %, preview) ----
+            const colorRow = controlEl.createDiv({ cls: 'portals-color-row' });
+
+            // Compact color picker container
+            const colorContainer = colorRow.createDiv({ cls: 'portals-color-compact' });
+
+            // Parse initial values
+            let initialHex = '#ff0000';
+            let initialOpacity = 1;
+            if (rootSpace.color && rootSpace.color !== 'transparent') {
+                const rgba = rootSpace.color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                if (rgba) {
+                    initialHex = `#${Number(rgba[1]).toString(16).padStart(2,'0')}${Number(rgba[2]).toString(16).padStart(2,'0')}${Number(rgba[3]).toString(16).padStart(2,'0')}`;
+                    initialOpacity = rgba[4] ? parseFloat(rgba[4]) : 1;
+                } else if (rootSpace.color.startsWith('#')) {
+                    initialHex = rootSpace.color;
                 }
-
-                const colorInput = colorContainer.createEl('input', { type: 'color', value: initialHex });
-                colorInput.style.width = '32px';
-                colorInput.style.height = '24px';
-                colorInput.style.padding = '0';
-                colorInput.style.border = 'none';
-                colorInput.style.cursor = 'pointer';
-
-                const opacitySlider = colorContainer.createEl('input', {
-                    type: 'range',
-                    value: String(initialOpacity * 100),
-                    attr: { min: '0', max: '100', step: '1' }
-                });
-                opacitySlider.style.width = '60px';
-
-                const opacityValue = colorContainer.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
-                opacityValue.style.fontSize = '12px';
-                opacityValue.style.minWidth = '40px';
-
-                const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
-
-                const updateColor = () => {
-                    const hex = colorInput.value;
-                    const opacity = parseInt(opacitySlider.value) / 100;
-                    const r = parseInt(hex.slice(1,3), 16);
-                    const g = parseInt(hex.slice(3,5), 16);
-                    const b = parseInt(hex.slice(5,7), 16);
-                    const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-                    rootSpace.color = rgba;
-                    preview.style.backgroundColor = rgba;
-                    opacityValue.setText(`${Math.round(opacity * 100)}%`);
-                    this.plugin.saveSettings();
-                };
-
-                colorInput.addEventListener('input', updateColor);
-                opacitySlider.addEventListener('input', updateColor);
             }
+
+            // Color input
+            const colorInput = colorContainer.createEl('input', { type: 'color', value: initialHex });
+            colorInput.style.width = '32px';
+            colorInput.style.height = '24px';
+            colorInput.style.padding = '0';
+            colorInput.style.border = 'none';
+            colorInput.style.cursor = 'pointer';
+
+            // Opacity number input
+            const opacityInput = colorContainer.createEl('input', {
+                type: 'number',
+                value: String(initialOpacity * 100),
+                attr: { min: '0', max: '100', step: '1' }
+            });
+            opacityInput.style.width = '60px';
+            opacityInput.style.textAlign = 'center';
+            opacityInput.style.padding = '2px';
+            opacityInput.style.border = '1px solid var(--background-modifier-border)';
+            opacityInput.style.borderRadius = '4px';
+            opacityInput.style.background = 'var(--background-primary)';
+            opacityInput.style.color = 'var(--text-normal)';
+
+            // Percent sign
+            const percentSpan = colorContainer.createSpan({ text: '%' });
+            percentSpan.style.marginLeft = '2px';
+            percentSpan.style.fontSize = '0.9em';
+
+            // Preview swatch
+            const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
+
+            const updateColor = () => {
+                const hex = colorInput.value;
+                const opacity = parseInt(opacityInput.value) / 100;
+                if (isNaN(opacity)) return;
+                const r = parseInt(hex.slice(1,3), 16);
+                const g = parseInt(hex.slice(3,5), 16);
+                const b = parseInt(hex.slice(5,7), 16);
+                const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                rootSpace.color = rgba;
+                preview.style.backgroundColor = rgba;
+                this.plugin.saveSettings();
+            };
+
+            colorInput.addEventListener('input', updateColor);
+            opacityInput.addEventListener('input', updateColor);
         }
+    }
 
         // ---- ADD PORTAL BUTTON ----
         new Setting(containerEl)
@@ -284,21 +304,20 @@ export class SpacesSettingTab extends PluginSettingTab {
         const tags: SpaceConfig[] = [];
 
         for (const portal of this.plugin.settings.spaces) {
+            if (portal.path === '/' && portal.type === 'folder') {
+                continue;
+            }
             if (portal.type === 'tag') {
                 tags.push(portal);
             } else {
-                if (portal.path === '/') {
-                    rootFolders.push(portal);
+                const folder = this.app.vault.getAbstractFileByPath(portal.path);
+                if (folder instanceof TFolder) {
+                    const isRoot = folder.parent === this.app.vault.getRoot();
+                    if (isRoot) rootFolders.push(portal);
+                    else subFolders.push(portal);
                 } else {
-                    const folder = this.app.vault.getAbstractFileByPath(portal.path);
-                    if (folder instanceof TFolder) {
-                        const isRoot = folder.parent === this.app.vault.getRoot();
-                        if (isRoot) rootFolders.push(portal);
-                        else subFolders.push(portal);
-                    } else {
-                        if (portal.path.includes('/')) subFolders.push(portal);
-                        else rootFolders.push(portal);
-                    }
+                    if (portal.path.includes('/')) subFolders.push(portal);
+                    else rootFolders.push(portal);
                 }
             }
         }
@@ -386,34 +405,41 @@ export class SpacesSettingTab extends PluginSettingTab {
                 colorInput.style.border = 'none';
                 colorInput.style.cursor = 'pointer';
 
-                const opacitySlider = colorContainer.createEl('input', {
-                    type: 'range',
+                const opacityInput = colorContainer.createEl('input', {
+                    type: 'number',
                     value: String(initialOpacity * 100),
                     attr: { min: '0', max: '100', step: '1' }
                 });
-                opacitySlider.style.width = '60px';
+                opacityInput.style.width = '60px';
+                opacityInput.style.textAlign = 'center';
+                opacityInput.style.padding = '2px';
+                opacityInput.style.border = '1px solid var(--background-modifier-border)';
+                opacityInput.style.borderRadius = '4px';
+                opacityInput.style.background = 'var(--background-primary)';
+                opacityInput.style.color = 'var(--text-normal)';
+                
+                const percentSpan = colorContainer.createSpan({ text: '%' });
+                percentSpan.style.marginLeft = '2px';
+                percentSpan.style.fontSize = '0.9em';
 
-                const opacityValue = colorContainer.createSpan({ text: `${Math.round(initialOpacity * 100)}%` });
-                opacityValue.style.fontSize = '12px';
-                opacityValue.style.minWidth = '40px';
+               
 
                 const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
 
                 const updateColor = () => {
                     const hex = colorInput.value;
-                    const opacity = parseInt(opacitySlider.value) / 100;
+                    const opacity = parseInt(opacityInput.value) / 100;
                     const r = parseInt(hex.slice(1,3), 16);
                     const g = parseInt(hex.slice(3,5), 16);
                     const b = parseInt(hex.slice(5,7), 16);
                     const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     portal.color = rgba;
                     preview.style.backgroundColor = rgba;
-                    opacityValue.setText(`${Math.round(opacity * 100)}%`);
                     this.plugin.saveSettings();
                 };
 
                 colorInput.addEventListener('input', updateColor);
-                opacitySlider.addEventListener('input', updateColor);
+                opacityInput.addEventListener('input', updateColor);
 
                 // Trash button
                 const trashBtn = colorRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Remove portal' } });
@@ -431,9 +457,13 @@ export class SpacesSettingTab extends PluginSettingTab {
             }
         };
 
+        containerEl.createEl('h3', { text: 'Active Portals' });
+
         renderSection('Root Folders', rootFolders);
         renderSection('Sub Folders', subFolders);
         renderSection('Tags', tags);
+
+        containerEl.createEl('hr');
 
         // ---- Backup / Restore ----
         containerEl.createEl('h3', { text: 'Backup / Restore' });
