@@ -429,6 +429,14 @@ export class PortalsView extends ItemView {
            const icons = SIDE_TAB_ICONS;
            const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
+           let rootColor: string | undefined;
+           if (this.plugin.settings.pinVaultRoot && this.plugin.settings.tabColorEnabled) {
+            const rootSpace = spaces.find(s => s.path === '/' && s.type === 'folder');
+            if (rootSpace && rootSpace.color && rootSpace.color !== 'transparent') {
+                rootColor = rootSpace.color;
+            }
+           }
+
             tabs.forEach(tabId => {
                 const tabBtn = tabContainer.createEl('div', { cls: 'portals-split-tab' });
                 tabBtn.dataset.tabId = tabId;
@@ -443,6 +451,9 @@ export class PortalsView extends ItemView {
 
                 if (tabId === activeTab) {
                     tabBtn.addClass('is-active');
+                    if (rootColor) {
+                        tabBtn.style.borderBottomColor = rootColor;
+                    }
                 }
 
                 tabBtn.addEventListener('click', () => {
@@ -461,9 +472,13 @@ export class PortalsView extends ItemView {
                             span.textContent = tId.charAt(0).toUpperCase() + tId.slice(1).replace('-', ' ');
                             tabElements.appendChild(span);
                         }
+                        tabElements.style.borderBottomColor = '';
                         tabElements.removeClass('is-active');
                     });
                     tabBtn.addClass('is-active');
+                    if (rootColor) {
+                        tabBtn.style.borderBottomColor = rootColor;
+                    }
                     this.renderSplitTabContent(secondaryPanel, tabId);
                 });
             });
