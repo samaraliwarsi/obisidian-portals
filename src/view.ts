@@ -3,6 +3,12 @@ import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
 
+const SIDE_TAB_ICONS: Record<string, string> = {
+    recent: 'clock-counter-clockwise',
+    'folder-notes': 'note',
+    bookmarks: 'bookmark'
+};
+
 // Simple text input modal for rename
 class InputModal extends Modal {
     constructor(
@@ -56,6 +62,10 @@ export class PortalsView extends ItemView {
     private renaming: boolean = false;
     private selectedFiles: Set<string> = new Set();
     private isDraggingSplitter: boolean = false;
+    private currentSecondaryPanel: HTMLElement | null = null;
+    private currentSplitter: HTMLElement | null = null;
+    private boundMouseMove: (e: MouseEvent) => void;
+    private boundMouseUp: () => void;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -87,6 +97,11 @@ export class PortalsView extends ItemView {
             this.app.vault.offref(createRef);
         };
 
+        this.boundMouseMove = this.handleMouseMove.bind(this);
+        this.boundMouseUp = this.handleMouseUp.bind(this);
+        document.addEventListener('mousemove', this.boundMouseMove);
+        document.addEventListener('mouseup', this.boundMouseUp);
+
         this.registerEvent(this.app.workspace.on('file-open', () => {
             if (!this.renaming) this.renderContent();
         }));
@@ -107,6 +122,38 @@ export class PortalsView extends ItemView {
         if (this.vaultEventRef) {
             this.vaultEventRef();
             this.vaultEventRef = null;
+        }
+
+        document.removeEventListener('mousemove', this.boundMouseMove);
+        document.removeEventListener('mouseup', this.boundMouseUp);
+    }
+
+    private handleMouseMove(e: MouseEvent) {
+        if (!this.isDraggingSplitter || !this.currentSecondaryPanel || !this.currentSplitter || !this.plugin.settings.sidePanelEnabled) return;
+        const splitContainer = this.currentSecondaryPanel.parentElement?.parentElement; // gets the split-container
+        if (!splitContainer) return;
+        const rect = splitContainer.getBoundingClientRect();
+        const mouseY = e.clientY;
+        const relativeY = mouseY - rect.top;
+        const minHeight = 50;
+        const maxHeight = rect.height - 50;
+        let newHeight = Math.min(maxHeight, Math.max(minHeight, rect.height - relativeY));
+        this.currentSecondaryPanel.style.height = newHeight + 'px';
+        this.currentSecondaryPanel.style.borderTop = 'none';
+        const splitContent = this.currentSecondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+        if (splitContent) splitContent.style.display = 'block';
+        if (this.currentSplitter) this.currentSplitter.style.display = 'block';
+        this.plugin.settings.secondaryPanelHeight = newHeight;
+        this.plugin.settings.secondaryPanelCollapsed = false;
+        const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
+        if (collapseIcon) collapseIcon.innerHTML = '▼';
+        this.plugin.saveData(this.plugin.settings);
+    }
+
+    private handleMouseUp() {
+        if (this.isDraggingSplitter) {
+            this.isDraggingSplitter = false;
+            document.body.style.cursor = '';
         }
     }
 
@@ -160,6 +207,7 @@ export class PortalsView extends ItemView {
             sortOrder: s.sortOrder,
             secondaryPanelCollapsed: s.secondaryPanelCollapsed,
             secondaryPanelHeight: s.secondaryPanelHeight,
+            sidePanelEnabled: s.sidePanelEnabled,
             activeSplitTab: s.activeSplitTab,
             splitViewTabs: s.splitViewTabs?.join(',') || '',
             recentFilesList: s.recentFilesList?.join(',') || ''
@@ -351,6 +399,7 @@ export class PortalsView extends ItemView {
             splitter.style.margin = '0';
             splitter.style.flexShrink = '0';
             splitter.style.transition = 'background 0.1s';
+            this.currentSplitter = splitter;
 
             // Secondary panel (tabs + content)
             const secondaryPanel = splitContainer.createDiv({ cls: 'portals-secondary-panel' });
@@ -358,6 +407,7 @@ export class PortalsView extends ItemView {
             secondaryPanel.style.overflow = 'hidden';
             secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border)';
             secondaryPanel.style.borderBottom = '1px solid var(--background-modifier-border)';
+            this.currentSecondaryPanel = secondaryPanel;
 
             // Header with tabs and collapse icon
             const secondaryHeader = secondaryPanel.createDiv({ cls: 'portals-secondary-header' });
@@ -375,12 +425,9 @@ export class PortalsView extends ItemView {
             tabContainer.style.padding = '0 4px';
 
            // Get tabs from settings, ensure folder-notes is present for testing
-let tabs = this.plugin.settings.splitViewTabs || ['recent'];
-if (!tabs.includes('folder-notes')) {
-    tabs = [...tabs, 'folder-notes'];
-}
-const icons = this.plugin.settings.splitViewTabIcons || { recent: 'clock', 'folder-notes': 'note' };
-const activeTab = this.plugin.settings.activeSplitTab || 'recent';
+           let tabs = this.plugin.settings.splitViewTabs || ['recent'];
+           const icons = SIDE_TAB_ICONS;
+           const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
             tabs.forEach(tabId => {
                 const tabBtn = tabContainer.createEl('div', { cls: 'portals-split-tab' });
@@ -390,7 +437,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 tabBtn.innerHTML = `<i class="ph ph-${iconName}"></i>`;
                 if (tabId === activeTab || this.plugin.settings.showInactiveTabNames) {
                     const span = document.createElement('span');
-                    span.textContent = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+                    span.textContent = tabId.charAt(0).toUpperCase() + tabId.slice(1).replace('-', ' ');
                     tabBtn.appendChild(span);
                 }
 
@@ -411,7 +458,7 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                         tabElements.innerHTML = `<i class="ph ph-${icon}"></i>`;
                         if (tId === tabId || this.plugin.settings.showInactiveTabNames) {
                             const span = document.createElement('span');
-                            span.textContent = tId.charAt(0).toUpperCase() + tId.slice(1);
+                            span.textContent = tId.charAt(0).toUpperCase() + tId.slice(1).replace('-', ' ');
                             tabElements.appendChild(span);
                         }
                         tabElements.removeClass('is-active');
@@ -436,8 +483,10 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
             // Set initial state
             const isCollapsed = this.plugin.settings.secondaryPanelCollapsed;
             const panelHeight = this.plugin.settings.secondaryPanelHeight || 200;
-
-            if (isCollapsed) {
+            if (!this.plugin.settings.sidePanelEnabled) {
+                secondaryPanel.style.display = 'none';
+                splitter.style.display = 'none';
+            } else if (isCollapsed) {
                 secondaryPanel.style.height = '42px';
                 splitContent.style.display = 'none';
                 splitter.style.display = 'none';
@@ -448,12 +497,14 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
                 splitContent.style.display = 'block';
                 splitter.style.display = 'block';
                 secondaryPanel.style.borderTop = 'none';
-                secondaryPanel.classList.remove('is-collapsed');
+                secondaryPanel.classList.remove('is-collapsed');                
             }
 
             // Toggle collapse on icon click
             collapseIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (!this.plugin.settings.sidePanelEnabled) return;
+
                 const newCollapsed = !this.plugin.settings.secondaryPanelCollapsed;
                 this.plugin.settings.secondaryPanelCollapsed = newCollapsed;
                 if (newCollapsed) {
@@ -474,36 +525,12 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
 
             // Make splitter draggable
             splitter.addEventListener('mousedown', (e) => {
+                if (!this.plugin.settings.sidePanelEnabled) return;
                 this.isDraggingSplitter = true;
                 document.body.style.cursor = 'ns-resize';
                 e.preventDefault();
             });
 
-            document.addEventListener('mousemove', (e) => {
-                if (!this.isDraggingSplitter) return;
-                const splitContainerRect = splitContainer.getBoundingClientRect();
-                const mouseY = e.clientY;
-                const relativeY = mouseY - splitContainerRect.top;
-                const minHeight = 50;
-                const maxHeight = splitContainerRect.height - 50;
-                let newHeight = Math.min(maxHeight, Math.max(minHeight, splitContainerRect.height - relativeY));
-                secondaryPanel.style.height = newHeight + 'px';
-                secondaryPanel.style.borderTop = 'none';
-                splitContent.style.display = 'block';
-                splitter.style.display = 'block';
-                this.plugin.settings.secondaryPanelHeight = newHeight;
-                this.plugin.settings.secondaryPanelCollapsed = false;
-                collapseIcon.innerHTML = '▼';
-                this.plugin.saveData(this.plugin.settings);
-            });
-
-            document.addEventListener('mouseup', () => {
-                if (this.isDraggingSplitter) {
-                    this.isDraggingSplitter = false;
-                    document.body.style.cursor = '';
-                    this.plugin.saveData(this.plugin.settings);
-                }
-            });
 
             // Initial content
             this.renderSplitTabContent(secondaryPanel, activeTab);
@@ -646,31 +673,30 @@ const activeTab = this.plugin.settings.activeSplitTab || 'recent';
         contentEl.empty();
 
         if (tabId === 'recent') {
-            if (this.plugin.settings.showRecentFiles) {
-                const recentFiles = this.plugin.settings.recentFilesList || [];
-                const existingRecentFiles = recentFiles
-                    .map(path => this.app.vault.getAbstractFileByPath(path))
-                    .filter((file): file is TFile => file instanceof TFile);
+            const recentFiles = this.plugin.settings.recentFilesList || [];
+            const existingRecentFiles = recentFiles
+                .map(path => this.app.vault.getAbstractFileByPath(path))
+                .filter((file): file is TFile => file instanceof TFile);
 
-                for (const file of existingRecentFiles) {
-                    const fileEl = contentEl.createDiv({ cls: 'file-item recent-file-item' });
-                    const iconSpan = fileEl.createSpan({ cls: 'file-icon' });
-                    iconSpan.createEl('i', { cls: 'ph ph-file' });
-                    const nameSpan = fileEl.createSpan({ text: this.getDisplayName(file) });
-                    nameSpan.addClass('portals-item-name');
-                    fileEl.dataset.path = file.path;
+            for (const file of existingRecentFiles) {
+                const fileEl = contentEl.createDiv({ cls: 'file-item recent-file-item' });
+                const iconSpan = fileEl.createSpan({ cls: 'file-icon' });
+                iconSpan.createEl('i', { cls: 'ph ph-file' });
+                const nameSpan = fileEl.createSpan({ text: this.getDisplayName(file) });
+                nameSpan.addClass('portals-item-name');
+                fileEl.dataset.path = file.path;
 
-                    fileEl.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.app.workspace.getLeaf().openFile(file);
-                    });
+                fileEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.app.workspace.getLeaf().openFile(file);
+                });
 
-                    fileEl.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        this.showFileContextMenu(e, file, fileEl);
-                    });
-                }
+                fileEl.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    this.showFileContextMenu(e, file, fileEl);
+                });
             }
+
         } else if (tabId === 'folder-notes') {
             // Placeholder for folder-notes
             const placeholder = contentEl.createDiv({ cls: 'portals-folder-notes-placeholder' });

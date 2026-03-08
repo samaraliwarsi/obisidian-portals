@@ -24,11 +24,10 @@ export interface SpacesSettings {
     showInactiveTabNames: boolean;
     secondaryPanelHeight: number;
     secondaryPanelCollapsed: boolean;
-    showRecentFiles: boolean;
+    sidePanelEnabled: boolean;
     recentFilesList: string[];
     splitViewTabs: string[];
     activeSplitTab: string;
-    splitViewTabIcons: Record<string, string>
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -44,14 +43,10 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     sortOrder: 'asc',
     secondaryPanelHeight: 200,
     secondaryPanelCollapsed: false,
-    showRecentFiles: false,
+    sidePanelEnabled: true,
     recentFilesList: [],
-    splitViewTabs: ['recent', 'folder-notes'],
+    splitViewTabs: ['recent', 'folder-notes', 'bookmarks'],
     activeSplitTab: 'recent',
-    splitViewTabIcons: {
-        recent: 'clock',
-        'folder-notes': 'note'
-    },
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -72,7 +67,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         // ---- Settings toggles ----
         new Setting(containerEl)
             .setName('Replace file explorer in left sidebar')
-            .setDesc('When enabled, the Portals pane will take the place of the default file explorer in the left sidebar on startup. The file explorer can still be opened via commands if needed.')
+            .setDesc('When enabled, Portals replaces the default file explorer on startup. The file explorer remains accesible via commands or Obsidian Tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.replaceFileExplorer)
                 .onChange(async (value) => {
@@ -83,7 +78,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('File pane color style')
-            .setDesc('How to apply per‑space colors to the file area.')
+            .setDesc('How to apply colors to the file area.')
             .addDropdown(dropdown => dropdown
                 .addOption('gradient', 'Gradient (25% solid → fade)')
                 .addOption('solid', 'Solid')
@@ -97,7 +92,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Tab colors')
-            .setDesc('Show per‑space background colors on tabs.')
+            .setDesc('Show background colors on Portal tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.tabColorEnabled)
                 .onChange(async (value) => {
@@ -117,23 +112,41 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
+        // --- SIDE PORTAL SETTINGS ---
         new Setting(containerEl)
-            .setName('Show recent files pane')
-            .setDesc('Display a list of recently opened files in a separate panel below the file tree.')
+            .setName('Side Portal')
+            .setDesc('Show a collapsible panel at the bottom with additional tabs.')
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.showRecentFiles)
+                .setValue(this.plugin.settings.sidePanelEnabled)
                 .onChange(async (value) => {
-                    this.plugin.settings.showRecentFiles = value;
+                    this.plugin.settings.sidePanelEnabled = value;
+                    if (!value) {
+                        this.plugin.settings.secondaryPanelCollapsed = true;
+                    }
                     await this.plugin.saveSettings();
                     this.display();
-                    this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
-                        if (leaf.view instanceof PortalsView) leaf.view.render();
-                    });
                 }));
+        new Setting(containerEl)
+            .setName('Choose Side Portals')
+            .setDesc('Select which tabs appear in the side portal.')
+            .addButton(button => button
+                .setButtonText('Configure')
+                .onClick(() => {
+                    new ChooseTabsModal(this.app, this.plugin, (tabs) => {
+                        this.plugin.settings.splitViewTabs = tabs;
+                        if (!tabs.contains(this.plugin.settings.activeSplitTab)) { 
+                            this.plugin.settings.activeSplitTab = tabs[0] || 'recent';
+                        }
+                        this.plugin.saveSettings();
+                        this.display();
+                    }).open();
+                }));
+                    
+                   
 
         // ---- PIN VAULT ROOT ----
         const pinSetting = new Setting(containerEl)
-            .setName('Pin vault root')
+            .setName('Pin Vault')
             .setDesc('Show the vault root as the first tab (always on the left). You can customize its icon and color below.');
 
         pinSetting.addToggle(toggle => toggle
@@ -171,7 +184,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             const rootSpace = this.plugin.settings.spaces.find(s => s.path === '/' && s.type === 'folder');
             if (rootSpace) {
                 const rootCustomSetting = new Setting(containerEl)
-                .setName('Vault root appearance')
+                .setName('Pin Vault appearance')
                 .setDesc('Customize icon and color for the pinned vault root tab.');
 
             const controlEl = rootCustomSetting.controlEl;
@@ -532,6 +545,88 @@ export class SpacesSettingTab extends PluginSettingTab {
         input.click();
     }
 }
+
+    // ==================== CHOOSE SIDE TABS MODAL ====================
+    class ChooseTabsModal extends Modal {
+        private selectedTabs: Set<string>;
+
+        constructor(
+            app: App,
+            private plugin: PortalsPlugin,
+            private onSave: (tabs: string[]) => void
+        ) {
+            super(app);
+            this.selectedTabs = new Set(plugin.settings.splitViewTabs);
+        }
+
+        onOpen() {
+            const { contentEl } = this;
+            contentEl.empty();
+            contentEl.createEl('h2', { text: 'Choose Side Portals' });
+
+            const desc = contentEl.createEl('p', { text: 'Select which tabs to show in the side panel. At least one must be selected.' });
+            desc.style.marginBottom = '1em';
+
+            // Available tabs with display names and icons
+            const availableTabs = [
+                { id: 'recent', name: 'Recent Files', icon: 'clock-counter-clockwise' },
+                { id: 'folder-notes', name: 'Folder Notes', icon: 'note' },
+                { id: 'bookmarks', name: 'Bookmarks', icon: 'bookmark' }
+            ];
+
+            const checkboxContainer = contentEl.createDiv();
+            checkboxContainer.style.marginBottom = '1.5em';
+
+            for (const tab of availableTabs) {
+                const checkboxDiv = checkboxContainer.createDiv();
+                checkboxDiv.style.marginBottom = '8px';
+
+                const checkbox = checkboxDiv.createEl('input', {
+                    type: 'checkbox',
+                    value: tab.id,
+                    attr: { id: `tab-${tab.id}` }
+                });
+                checkbox.checked = this.selectedTabs.has(tab.id);
+
+                const label = checkboxDiv.createEl('label', {
+                    text: ` ${tab.name}`,
+                    attr: { for: `tab-${tab.id}` }
+                });
+                label.style.marginLeft = '4px';
+                label.style.cursor = 'pointer';
+
+                checkbox.addEventListener('change', (e) => {
+                    const target = e.target as HTMLInputElement;
+                    if (target.checked) {
+                        this.selectedTabs.add(tab.id);
+                    } else {
+                        this.selectedTabs.delete(tab.id);
+                    }
+                });
+            }
+
+            const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
+            buttonDiv.style.marginTop = '1em';
+
+            const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
+            cancelBtn.addEventListener('click', () => this.close());
+
+            const saveBtn = buttonDiv.createEl('button', { text: 'Save', cls: 'mod-cta' });
+            saveBtn.addEventListener('click', () => {
+                const selected = Array.from(this.selectedTabs);
+                if (selected.length === 0) {
+                    new Notice('Please select at least one tab.');
+                    return;
+                }
+                this.onSave(selected);
+                this.close();
+            });
+        }
+
+        onClose() {
+            this.contentEl.empty();
+        }
+    }
 
 // ==================== ADD PORTAL MODAL ====================
 class AddPortalModal extends Modal {
