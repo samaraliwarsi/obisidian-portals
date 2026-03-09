@@ -29,6 +29,7 @@ export interface SpacesSettings {
     recentFilesList: string[];
     splitViewTabs: string[];
     activeSplitTab: string;
+    showFolderNotesInTree: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -49,6 +50,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     recentFilesList: [],
     splitViewTabs: ['recent', 'folder-notes', 'bookmarks'],
     activeSplitTab: 'recent',
+    showFolderNotesInTree: false,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -110,6 +112,18 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.showInactiveTabNames)
                 .onChange(async (value) => {
                     this.plugin.settings.showInactiveTabNames = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        //-- Folder Notes
+        new Setting(containerEl)
+            .setName('Show folder notes in file tree')
+            .setDesc('If enabled, folder notes appear as regular files in treem. Otherwise they are hidden.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showFolderNotesInTree)
+                .onChange(async (value) => {
+                    this.plugin.settings.showFolderNotesInTree = value;
                     await this.plugin.saveSettings();
                     this.display();
                 }));

@@ -1,7 +1,8 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Platform } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Platform, setIcon, Component } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
+import { MarkdownRenderer } from 'obsidian';
 
 const MIN_EXPANDED_HEIGHT = 150;
 const SIDE_TAB_ICONS: Record<string, string> = {
@@ -124,6 +125,25 @@ export class PortalsView extends ItemView {
             (this as any).bookmarksPluginRef = bookmarksPluginRef;
         }
 
+        //---FolderNotes 
+        const refreshFolderNotes = () => {
+            if (this.plugin.settings.activeSplitTab === 'folder-notes') {
+                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                if (secondaryPanel) {
+                    const contentEl = secondaryPanel.querySelector('.portals-split-content');
+                    if (contentEl) {
+                        (contentEl as HTMLElement).empty();
+                        this.renderFolderNotesTab(contentEl as HTMLElement);
+                    }
+                }
+            }
+        };
+        const folderNoteRenameRef = this.app.vault.on('rename', refreshFolderNotes);
+        const folderNoteDeleteRef = this.app.vault.on('delete', refreshFolderNotes);
+        const folderNoteCreateRef = this.app.vault.on('create', refreshFolderNotes);
+        (this as any).folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef];
+
+
         // Global drag listeners
         document.addEventListener('mousemove', this.handleDragMove);
         document.addEventListener('touchmove', this.handleDragMove, { passive: false });
@@ -144,15 +164,21 @@ export class PortalsView extends ItemView {
             this.vaultEventRef();
             this.vaultEventRef = null;
         }
-
-    // Clean up bookmarks plugin listener if we added one
-    const bookmarksPluginRef = (this as any).bookmarksPluginRef;
-        if (bookmarksPluginRef) {
-            const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
-            if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
-                bookmarksPlugin.instance.off('changed', bookmarksPluginRef);
-            }
+        
+        //--clean up foldernotes listeners
+        if ((this as any).folderNoteEventRefs) {
+            (this as any).folderNoteEventRefs.forEach((ref:any) => this.app.vault.offref(ref));
+            (this as any).folderNoteEventRefs = null;
         }
+
+        // Clean up bookmarks plugin listener if we added one
+        const bookmarksPluginRef = (this as any).bookmarksPluginRef;
+            if (bookmarksPluginRef) {
+                const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+                if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
+                    bookmarksPlugin.instance.off('changed', bookmarksPluginRef);
+                }
+            }
 
         document.removeEventListener('mousemove', this.handleDragMove);
         document.removeEventListener('touchmove', this.handleDragMove);
@@ -300,6 +326,12 @@ export class PortalsView extends ItemView {
         }
     }
 
+    //-- FolderNote
+    private isFolderNote(file: TFile, folder: TFolder): boolean {
+        return file.extension === 'md' && file.name.toLowerCase() === (folder.name + '.md').toLowerCase() && file.parent?.path === folder.path;
+    }
+
+    //-- Settings Hash
     private getSettingsHash(): string {
         const s = this.plugin.settings;
         return JSON.stringify({
@@ -316,7 +348,8 @@ export class PortalsView extends ItemView {
             sidePanelEnabled: s.sidePanelEnabled,
             activeSplitTab: s.activeSplitTab,
             splitViewTabs: s.splitViewTabs?.join(',') || '',
-            recentFilesList: s.recentFilesList?.join(',') || ''
+            recentFilesList: s.recentFilesList?.join(',') || '',
+            showFolderNotesInTree: s.showFolderNotesInTree
         });
     }
 
@@ -770,23 +803,7 @@ export class PortalsView extends ItemView {
             }
 
         } else if (tabId === 'folder-notes') {
-            // Placeholder for folder-notes
-            const placeholder = contentEl.createDiv({ cls: 'portals-folder-notes-placeholder' });
-            placeholder.style.display = 'flex';
-            placeholder.style.flexDirection = 'column';
-            placeholder.style.alignItems = 'center';
-            placeholder.style.justifyContent = 'center';
-            placeholder.style.height = '100%';
-            placeholder.style.color = 'var(--text-muted)';
-            placeholder.style.padding = '20px';
-            const icon = placeholder.createEl('i', { cls: 'ph ph-note' });
-            icon.style.fontSize = '48px';
-            icon.style.marginBottom = '16px';
-        
-            placeholder.createEl('p', { text: 'Folder notes will appear here.' });
-            placeholder.createEl('p', { text: '(Coming soon)' });
-        } else if (tabId === 'bookmarks') {
-            this.renderBookmarksTab(contentEl);
+            this.renderFolderNotesTab(contentEl)
         }
     }
 
@@ -925,6 +942,90 @@ export class PortalsView extends ItemView {
 }
 
     // End of bookmark
+
+    // Folder note
+
+    private async createFolderNote(folder: TFolder) {
+        const noteName = folder.name + '.md';
+        const notePath = `${folder.path}/${noteName}`;
+        try {
+            const file = await this.app.vault.create(notePath, `# ${folder.name}\n\n`);
+            await this.app.workspace.getLeaf().openFile(file);
+            // Optionally refresh the side portal tab if it's active
+            if (this.plugin.settings.activeSplitTab === 'folder-notes') {
+                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                if (secondaryPanel) {
+                    const contentEl = secondaryPanel.querySelector('.portals-split-content');
+                    if (contentEl) {
+                        (contentEl as HTMLElement).empty();
+                        this.renderFolderNotesTab(contentEl as HTMLElement);
+                    }
+                }
+            }
+        } catch (err) {
+            new Notice(`Failed to create folder note: ${err}`);
+        }
+    }
+
+    //--RenderFolderNotesTab
+    
+    private renderFolderNotesTab(contentEl: HTMLElement) {
+        const selectedSpace = this.plugin.settings.selectedSpace;
+        if (!selectedSpace || selectedSpace.type !== 'folder') {
+            contentEl.createEl('p', { text: 'Select a folder space to view its folder note.' });
+            return;
+        }
+        const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+        if (!(folder instanceof TFolder)) {
+            contentEl.createEl('p', { text: 'Folder not found.' });
+            return;
+        }
+        const folderNote = folder.children.find((child): child is TFile => 
+            child instanceof TFile && this.isFolderNote(child, folder)
+        );
+        console.log('Folder note found:', folderNote ? folderNote.path : 'none');
+
+        if (!folderNote) {
+            contentEl.createEl('p', { text: 'No folder note found for this folder. Create one using the folder context menu.' });
+            return;
+        }
+
+        const noteContainer = contentEl.createDiv({ cls: 'markdown-reading-view' });
+        noteContainer.style.padding = '8px';
+        noteContainer.style.height = '100%';
+        noteContainer.style.overflowY = 'auto';
+        noteContainer.style.cursor = 'pointer';
+
+        // Read and render the note
+        this.app.vault.read(folderNote).then(content => {
+            try {
+                const component = new Component();
+                // Cast MarkdownRenderer to any to bypass type errors
+                (MarkdownRenderer as any).renderMarkdown(
+                    content,
+                    noteContainer,
+                    folderNote.path,
+                    component
+                );
+                // Register the component for cleanup
+                this.addChild(component);
+            } catch (e) {
+                console.error('Error rendering folder note:', e);
+                noteContainer.setText('Error rendering note.');
+            }
+        }).catch(e => {
+            console.error('Error reading folder note:', e);
+            noteContainer.setText('Error reading note.');
+        });
+
+        // Click to open (but not on links)
+        noteContainer.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('a')) return;
+            this.app.workspace.getLeaf().openFile(folderNote);
+        });
+    }
+
+    //--End of renderFolderNotesTab
 
 
     async renderContent() {
@@ -1142,6 +1243,20 @@ export class PortalsView extends ItemView {
             .setTitle('New canvas')
             .setIcon('layout-dashboard')
             .onClick(() => this.newCanvasInFolder(folder)));
+
+        const folderNote = folder.children.find((child): child is TFile =>
+            child instanceof TFile && this.isFolderNote(child, folder));
+        if (folderNote) {
+            menu.addItem(item => item
+                .setTitle('Open folder note')
+                .setIcon('note')
+                .onClick(() => this.app.workspace.getLeaf().openFile(folderNote)));
+        } else {
+            menu.addItem(item => item
+                .setTitle('Create folder note')
+                .setIcon('plus')
+                .onClick(() => this.createFolderNote(folder)));
+        }
 
         menu.addSeparator();
 
@@ -1556,6 +1671,9 @@ export class PortalsView extends ItemView {
                 if (child instanceof TFolder) {
                     this.buildFolderTree(child, childrenContainer, 'folder');
                 } else if (child instanceof TFile) {
+                    if (!this.plugin.settings.showFolderNotesInTree && this.isFolderNote(child, folder)) {
+                        continue;
+                    }
                     const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                     const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
                     fileIcon.createEl('i', { cls: 'ph ph-file' });
