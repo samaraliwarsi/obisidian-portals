@@ -110,20 +110,43 @@ export class PortalsView extends ItemView {
             if (!this.renaming) this.renderContent();
         }));
 
-        const bookMarksRef = (this.app.workspace as any).on('bookmarks-changed', () => {
-            console.log('bookmarks-changed event fired');
-            if (this.plugin.settings.activeSplitTab === 'bookmarks') {
-                const secondaryPabel = this.containerEl.querySelector('.portals-secondary-panel');
-                if (secondaryPabel) {
-                    const contentEl = secondaryPabel.querySelector('.portals-split-content');
+        // Try to listen directly to the bookmarks plugin
+        const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+        let bookmarksPluginRef: any = null;
+        if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.on === 'function') {
+            bookmarksPluginRef = bookmarksPlugin.instance.on('changed', () => {
+                console.log('bookmarks plugin changed event fired');
+                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                if (secondaryPanel) {
+                    const contentEl = secondaryPanel.querySelector('.portals-split-content');
                     if (contentEl) {
                         (contentEl as HTMLElement).empty();
                         this.renderBookmarksTab(contentEl as HTMLElement);
                     }
                 }
-            }
-        });
-        this.registerEvent(bookMarksRef);
+            });
+            // Store it to unregister later
+            (this as any).bookmarksPluginRef = bookmarksPluginRef;
+        } else {
+            // Fallback: try various workspace events
+            const workspaceEvents = ['bookmarks-changed', 'bookmarks:changed', 'bookmarks-updated'];
+            (this as any).bookmarksWorkspaceRefs = [];
+            workspaceEvents.forEach(eventName => {
+                const ref = (this.app.workspace as any).on(eventName, () => {
+                    console.log(`workspace event ${eventName} fired`);
+                    const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                    if (secondaryPanel) {
+                        const contentEl = secondaryPanel.querySelector('.portals-split-content');
+                        if (contentEl) {
+                            (contentEl as HTMLElement).empty();
+                            this.renderBookmarksTab(contentEl as HTMLElement);
+                        }
+                    }
+                });
+                (this as any).bookmarksWorkspaceRefs.push(ref);
+                this.registerEvent(ref);
+            });
+        }
     }
 
     async onClose() {
@@ -142,6 +165,15 @@ export class PortalsView extends ItemView {
 
         document.removeEventListener('mousemove', this.boundMouseMove);
         document.removeEventListener('mouseup', this.boundMouseUp);
+
+        // Clean up bookmarks plugin listener if we added one
+        const bookmarksPluginRef = (this as any).bookmarksPluginRef;
+        if (bookmarksPluginRef) {
+            const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+            if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
+                bookmarksPlugin.instance.off('changed', bookmarksPluginRef);
+            }
+        }
     }
 
     private handleMouseMove(e: MouseEvent) {
