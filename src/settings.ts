@@ -23,6 +23,7 @@ export interface SpacesSettings {
     sortOrder: 'asc' | 'desc';
     showInactiveTabNames: boolean;
     secondaryPanelHeight: number;
+    lastExpandedHeight: number;
     secondaryPanelCollapsed: boolean;
     sidePanelEnabled: boolean;
     recentFilesList: string[];
@@ -42,6 +43,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     showInactiveTabNames: false,
     sortOrder: 'asc',
     secondaryPanelHeight: 200,
+    lastExpandedHeight: 200,
     secondaryPanelCollapsed: false,
     sidePanelEnabled: true,
     recentFilesList: [],

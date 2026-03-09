@@ -3,6 +3,7 @@ import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
 
+const MIN_EXPANDED_HEIGHT = 150;
 const SIDE_TAB_ICONS: Record<string, string> = {
     recent: 'clock-counter-clockwise',
     'folder-notes': 'note',
@@ -238,6 +239,13 @@ export class PortalsView extends ItemView {
         if (splitContent) splitContent.style.display = 'block';
         if (this.currentSplitter) this.currentSplitter.style.display = 'block';
 
+        // update lastExpanded height only above collapse threshold
+        const COLLAPSE_THRESHOLD = 80;
+        if (!this.plugin.settings.secondaryPanelCollapsed && newHeight > COLLAPSE_THRESHOLD) {
+            this.plugin.settings.lastExpandedHeight = newHeight;
+        }
+       
+
         this.plugin.settings.secondaryPanelHeight = newHeight;
         this.plugin.settings.secondaryPanelCollapsed = false;
         this.currentSecondaryPanel.classList.remove('is-collapsed');
@@ -279,7 +287,7 @@ export class PortalsView extends ItemView {
             this.plugin.settings.secondaryPanelCollapsed = false;
             const secondaryPanel = this.currentSecondaryPanel;
             if (secondaryPanel) {
-                secondaryPanel.style.height = this.plugin.settings.secondaryPanelHeight + 'px';
+                secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
                 const splitContent = secondaryPanel.querySelector('.portals-split-content') as HTMLElement;
                 if (splitContent) splitContent.style.display = 'block';
                 if (this.currentSplitter) this.currentSplitter.style.display = 'block';
@@ -574,7 +582,7 @@ export class PortalsView extends ItemView {
                 splitter.style.display = 'none';
                 secondaryPanel.classList.add('is-collapsed');
             } else {
-                secondaryPanel.style.height = panelHeight + 'px';
+                secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
                 splitContent.style.display = 'block';
                 splitter.style.display = 'block';
                 secondaryPanel.classList.remove('is-collapsed');                
@@ -594,7 +602,7 @@ export class PortalsView extends ItemView {
                     collapseIcon.innerHTML = '▲';
                     secondaryPanel.classList.add('is-collapsed');
                 } else {
-                    secondaryPanel.style.height = panelHeight + 'px';
+                    secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
                     splitContent.style.display = 'block';
                     splitter.style.display = 'block';
                     collapseIcon.innerHTML = '▼';
