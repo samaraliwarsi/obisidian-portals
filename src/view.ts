@@ -409,58 +409,27 @@ export class PortalsView extends ItemView {
 
             // --- Split pane layout with tabs ---
             const splitContainer = container.createDiv({ cls: 'portals-split-container' });
-            splitContainer.style.flex = '1';
-            splitContainer.style.display = 'flex';
-            splitContainer.style.flexDirection = 'column';
-            splitContainer.style.minHeight = '0';
 
             // Main panel (folder/tag tree)
             const mainPanel = splitContainer.createDiv({ cls: 'portals-main-panel' });
-            mainPanel.style.flex = '1';
-            mainPanel.style.display = 'flex';
-            mainPanel.style.flexDirection = 'column';
-            mainPanel.style.minHeight = '0';
-            mainPanel.style.overflow = 'hidden';
-            mainPanel.style.position = 'relative';
 
             // Tree content area (scrollable)
             const treeContainer = mainPanel.createDiv({ cls: 'portals-tree-container' });
-            treeContainer.style.flex = '1';
-            treeContainer.style.minHeight = '0';
-            treeContainer.style.overflow = 'auto';
 
             // Splitter (draggable)
             const splitter = splitContainer.createDiv({ cls: 'portals-splitter' });
-            splitter.style.height = '1px';
-            splitter.style.cursor = 'ns-resize';
-            splitter.style.background = 'var(--background-modifier-border)';
-            splitter.style.margin = '0';
-            splitter.style.flexShrink = '0';
-            splitter.style.transition = 'background 0.1s';
             this.currentSplitter = splitter;
 
             // Secondary panel (tabs + content)
             const secondaryPanel = splitContainer.createDiv({ cls: 'portals-secondary-panel' });
-            secondaryPanel.style.flexShrink = '0';
-            secondaryPanel.style.overflow = 'hidden';
             secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border)';
-            secondaryPanel.style.borderBottom = '1px solid var(--background-modifier-border)';
             this.currentSecondaryPanel = secondaryPanel;
 
             // Header with tabs and collapse icon
             const secondaryHeader = secondaryPanel.createDiv({ cls: 'portals-secondary-header' });
-            secondaryHeader.style.display = 'flex';
-            secondaryHeader.style.justifyContent = 'space-between';
-            secondaryHeader.style.alignItems = 'center';
-            secondaryHeader.style.height = '40px';
-            secondaryHeader.style.boxSizing = 'border-box';
 
             // Tab container
             const tabContainer = secondaryHeader.createDiv({ cls: 'portals-split-tabs' });
-            tabContainer.style.display = 'flex';
-            tabContainer.style.gap = '4px';
-            tabContainer.style.alignItems = 'center';
-            tabContainer.style.padding = '0 4px';
 
            // Get tabs from settings, ensure folder-notes is present for testing
            let tabs = this.plugin.settings.splitViewTabs || ['recent'];
@@ -523,15 +492,10 @@ export class PortalsView extends ItemView {
 
             // Collapse icon
             const collapseIcon = secondaryHeader.createSpan({ cls: 'portals-collapse-icon' });
-            collapseIcon.style.fontSize = '12px';
-            collapseIcon.style.padding = '0 12px';
-            collapseIcon.style.cursor = 'pointer';
-            collapseIcon.innerHTML = this.plugin.settings.secondaryPanelCollapsed ? '▲' : '▼';
+            collapseIcon.innerHTML = this.plugin.settings.secondaryPanelCollapsed ? '▲' : '▼';  
 
             // Content area (collapsible)
             const splitContent = secondaryPanel.createDiv({ cls: 'portals-split-content' });
-            splitContent.style.padding = '0 8px';
-            splitContent.style.overflow = 'auto';
 
             // Set initial state
             const isCollapsed = this.plugin.settings.secondaryPanelCollapsed;
@@ -614,19 +578,7 @@ export class PortalsView extends ItemView {
             // Floating buttons (attached to mainPanel)
             const createFloatingButton = (icon: string, tooltip: string, bottom: number, onClick: (e: MouseEvent) => void) => {
                 const btn = mainPanel.createEl('button', { cls: 'portals-floating-btn' });
-                btn.style.position = 'absolute';
                 btn.style.bottom = bottom + 'px';
-                btn.style.left = '16px';
-                btn.style.zIndex = '10';
-                btn.style.width = '32px';
-                btn.style.height = '32px';
-                btn.style.borderRadius = '50%';
-                btn.style.border = 'none';
-                btn.style.display = 'flex';
-                btn.style.alignItems = 'center';
-                btn.style.justifyContent = 'center';
-                btn.style.cursor = 'pointer';
-                btn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                 btn.innerHTML = `<i class="ph ph-${icon}"></i>`;
                 if (!Platform.isMobile) {
                     btn.addEventListener('mouseenter', () => this.showTooltip(tooltip, btn));
