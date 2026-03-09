@@ -5063,6 +5063,13 @@ justify-content: flex-start !important;
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.portals-secondary-panel.is-collapsed {
+    border-top: 1px solid var(--background-modifier-border);
+}
+.portals-secondary-panel:not(.is-collapsed) {
+    border-top: none;
+}
+
 .portals-secondary-header {
     display: flex;
     justify-content: space-between;

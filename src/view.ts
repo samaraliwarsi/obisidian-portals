@@ -64,8 +64,6 @@ export class PortalsView extends ItemView {
     private isDraggingSplitter: boolean = false;
     private currentSecondaryPanel: HTMLElement | null = null;
     private currentSplitter: HTMLElement | null = null;
-    private boundMouseMove: (e: MouseEvent) => void;
-    private boundMouseUp: () => void;
     private sortableInstance: Sortable | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
@@ -98,10 +96,6 @@ export class PortalsView extends ItemView {
             this.app.vault.offref(createRef);
         };
 
-        this.boundMouseMove = this.handleMouseMove.bind(this);
-        this.boundMouseUp = this.handleMouseUp.bind(this);
-        document.addEventListener('mousemove', this.boundMouseMove);
-        document.addEventListener('mouseup', this.boundMouseUp);
 
         this.registerEvent(this.app.workspace.on('file-open', () => {
             if (!this.renaming) this.renderContent();
@@ -128,6 +122,12 @@ export class PortalsView extends ItemView {
             // Store it to unregister later
             (this as any).bookmarksPluginRef = bookmarksPluginRef;
         }
+
+        // Global drag listeners
+        document.addEventListener('mousemove', this.handleDragMove);
+        document.addEventListener('touchmove', this.handleDragMove, { passive: false });
+        document.addEventListener('mouseup', this.handleDragEnd);
+        document.addEventListener('touchend', this.handleDragEnd);
     }
 
     async onClose() {
@@ -144,46 +144,19 @@ export class PortalsView extends ItemView {
             this.vaultEventRef = null;
         }
 
-        document.removeEventListener('mousemove', this.boundMouseMove);
-        document.removeEventListener('mouseup', this.boundMouseUp);
-
-        // Clean up bookmarks plugin listener if we added one
-        const bookmarksPluginRef = (this as any).bookmarksPluginRef;
+    // Clean up bookmarks plugin listener if we added one
+    const bookmarksPluginRef = (this as any).bookmarksPluginRef;
         if (bookmarksPluginRef) {
             const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
             if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
                 bookmarksPlugin.instance.off('changed', bookmarksPluginRef);
             }
         }
-    }
 
-    private handleMouseMove(e: MouseEvent) {
-        if (!this.isDraggingSplitter || !this.currentSecondaryPanel || !this.currentSplitter || !this.plugin.settings.sidePanelEnabled) return;
-        const splitContainer = this.currentSecondaryPanel.parentElement?.parentElement; // gets the split-container
-        if (!splitContainer) return;
-        const rect = splitContainer.getBoundingClientRect();
-        const mouseY = e.clientY;
-        const relativeY = mouseY - rect.top;
-        const minHeight = 50;
-        const maxHeight = rect.height - 50;
-        let newHeight = Math.min(maxHeight, Math.max(minHeight, rect.height - relativeY));
-        this.currentSecondaryPanel.style.height = newHeight + 'px';
-        this.currentSecondaryPanel.style.borderTop = 'none';
-        const splitContent = this.currentSecondaryPanel.querySelector('.portals-split-content') as HTMLElement;
-        if (splitContent) splitContent.style.display = 'block';
-        if (this.currentSplitter) this.currentSplitter.style.display = 'block';
-        this.plugin.settings.secondaryPanelHeight = newHeight;
-        this.plugin.settings.secondaryPanelCollapsed = false;
-        const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
-        if (collapseIcon) collapseIcon.innerHTML = '▼';
-        this.plugin.saveData(this.plugin.settings);
-    }
-
-    private handleMouseUp() {
-        if (this.isDraggingSplitter) {
-            this.isDraggingSplitter = false;
-            document.body.style.cursor = '';
-        }
+        document.removeEventListener('mousemove', this.handleDragMove);
+        document.removeEventListener('touchmove', this.handleDragMove);
+        document.removeEventListener('mouseup', this.handleDragEnd);
+        document.removeEventListener('touchend', this.handleDragEnd);
     }
 
     private getTooltipEl(): HTMLElement {
@@ -224,6 +197,98 @@ export class PortalsView extends ItemView {
             if (this.tooltipEl) {
                 this.tooltipEl.style.display = 'none';
             }
+        }
+    }
+
+    //-- New Drag Handler
+
+    private handleDragStart = (e: MouseEvent | TouchEvent) => {
+        if (!this.plugin.settings.sidePanelEnabled) return;
+        this.isDraggingSplitter = true;
+        document.body.style.cursor = 'ns-resize';
+        e.preventDefault();
+    };
+
+    private handleDragMove = (e: MouseEvent | TouchEvent) => {
+        if (!this.isDraggingSplitter || !this.currentSecondaryPanel || !this.currentSplitter || !this.plugin.settings.sidePanelEnabled) return;
+
+        e.preventDefault();
+
+        const splitContainer = this.currentSecondaryPanel.parentElement?.parentElement;
+        if (!splitContainer) return;
+
+        const rect = splitContainer.getBoundingClientRect();
+        let clientY: number;
+
+        if (e instanceof TouchEvent) {
+            const touch = e.touches[0];
+            if (!touch) return; // no touch point – abort
+            clientY = touch.clientY;
+        } else {
+            clientY = e.clientY;
+        }
+
+        const relativeY = clientY - rect.top;
+        const minHeight = 50;
+        const maxHeight = rect.height - 50;
+        let newHeight = Math.min(maxHeight, Math.max(minHeight, rect.height - relativeY));
+
+        this.currentSecondaryPanel.style.height = newHeight + 'px';
+        const splitContent = this.currentSecondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+        if (splitContent) splitContent.style.display = 'block';
+        if (this.currentSplitter) this.currentSplitter.style.display = 'block';
+
+        this.plugin.settings.secondaryPanelHeight = newHeight;
+        this.plugin.settings.secondaryPanelCollapsed = false;
+        this.currentSecondaryPanel.classList.remove('is-collapsed');
+        const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
+        if (collapseIcon) collapseIcon.innerHTML = '▼';
+        this.plugin.saveData(this.plugin.settings);
+    };
+
+    private handleDragEnd = (e: MouseEvent | TouchEvent) => {
+        if (this.isDraggingSplitter) {
+            this.isDraggingSplitter = false;
+            document.body.style.cursor = '';
+
+            // Snap‑to‑collapse: if dragged almost to the bottom, collapse
+            if (this.currentSecondaryPanel) {
+                const height = parseFloat(this.currentSecondaryPanel.style.height);
+                const minHeight = 50;
+                if (height <= minHeight + 10) {
+                    this.plugin.settings.secondaryPanelCollapsed = true;
+                    this.currentSecondaryPanel.classList.add('is-collapsed');
+                    this.currentSecondaryPanel.style.borderTop = '';
+                    this.currentSecondaryPanel.style.height = '42px';
+                    const splitContent = this.currentSecondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+                    if (splitContent) splitContent.style.display = 'none';
+                    if (this.currentSplitter) this.currentSplitter.style.display = 'none';
+                    const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
+                    if (collapseIcon) collapseIcon.innerHTML = '▲';
+                    this.plugin.saveData(this.plugin.settings);
+                }
+            }
+        }
+    };
+
+    //-- ExpandPanel Helper
+
+    private expandPanel() {
+        if (!this.plugin.settings.sidePanelEnabled) return;
+        if (this.plugin.settings.secondaryPanelCollapsed) {
+            this.plugin.settings.secondaryPanelCollapsed = false;
+            const secondaryPanel = this.currentSecondaryPanel;
+            if (secondaryPanel) {
+                secondaryPanel.style.height = this.plugin.settings.secondaryPanelHeight + 'px';
+                const splitContent = secondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+                if (splitContent) splitContent.style.display = 'block';
+                if (this.currentSplitter) this.currentSplitter.style.display = 'block';
+                const collapseIcon = secondaryPanel.querySelector('.portals-collapse-icon');
+                if (collapseIcon) collapseIcon.innerHTML = '▼';
+                // Remove the collapsed class so CSS can apply the correct border
+                secondaryPanel.classList.remove('is-collapsed');
+            }
+            this.plugin.saveData(this.plugin.settings);
         }
     }
 
@@ -422,7 +487,6 @@ export class PortalsView extends ItemView {
 
             // Secondary panel (tabs + content)
             const secondaryPanel = splitContainer.createDiv({ cls: 'portals-secondary-panel' });
-            secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border)';
             this.currentSecondaryPanel = secondaryPanel;
 
             // Header with tabs and collapse icon
@@ -464,6 +528,7 @@ export class PortalsView extends ItemView {
                 }
 
                 tabBtn.addEventListener('click', () => {
+                    this.expandPanel();
                     this.plugin.settings.activeSplitTab = tabId;
                     this.plugin.saveData(this.plugin.settings);
 
@@ -507,13 +572,11 @@ export class PortalsView extends ItemView {
                 secondaryPanel.style.height = '42px';
                 splitContent.style.display = 'none';
                 splitter.style.display = 'none';
-                secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border';
                 secondaryPanel.classList.add('is-collapsed');
             } else {
                 secondaryPanel.style.height = panelHeight + 'px';
                 splitContent.style.display = 'block';
                 splitter.style.display = 'block';
-                secondaryPanel.style.borderTop = 'none';
                 secondaryPanel.classList.remove('is-collapsed');                
             }
 
@@ -529,24 +592,20 @@ export class PortalsView extends ItemView {
                     splitContent.style.display = 'none';
                     splitter.style.display = 'none';
                     collapseIcon.innerHTML = '▲';
-                    secondaryPanel.style.borderTop = '1px solid var(--background-modifier-border';
+                    secondaryPanel.classList.add('is-collapsed');
                 } else {
                     secondaryPanel.style.height = panelHeight + 'px';
                     splitContent.style.display = 'block';
                     splitter.style.display = 'block';
                     collapseIcon.innerHTML = '▼';
-                    secondaryPanel.style.borderTop = 'none';
+                    secondaryPanel.classList.remove('is-collapsed');
                 }
                 this.plugin.saveData(this.plugin.settings);
             });
 
-            // Make splitter draggable
-            splitter.addEventListener('mousedown', (e) => {
-                if (!this.plugin.settings.sidePanelEnabled) return;
-                this.isDraggingSplitter = true;
-                document.body.style.cursor = 'ns-resize';
-                e.preventDefault();
-            });
+            // Make splitter draggable (mouse + touch)
+            splitter.addEventListener('mousedown', this.handleDragStart);
+            splitter.addEventListener('touchstart', this.handleDragStart, { passive: false });
 
 
             // Initial content
