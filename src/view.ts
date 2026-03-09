@@ -2,7 +2,7 @@ import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Plat
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
-import { MarkdownRenderer } from 'obsidian';
+import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
 
 const MIN_EXPANDED_HEIGHT = 150;
 const SIDE_TAB_ICONS: Record<string, string> = {
@@ -990,8 +990,8 @@ export class PortalsView extends ItemView {
             return;
         }
 
-        const noteContainer = contentEl.createDiv({ cls: 'markdown-reading-view' });
-        noteContainer.style.padding = '8px';
+        // Create container with proper classes
+        const noteContainer = contentEl.createDiv({ cls: 'markdown-preview-view' });
         noteContainer.style.height = '100%';
         noteContainer.style.overflowY = 'auto';
         noteContainer.style.cursor = 'pointer';
@@ -999,16 +999,17 @@ export class PortalsView extends ItemView {
         // Read and render the note
         this.app.vault.read(folderNote).then(content => {
             try {
+                // Use a plain Component (not MarkdownRenderChild)
                 const component = new Component();
-                // Cast MarkdownRenderer to any to bypass type errors
-                (MarkdownRenderer as any).renderMarkdown(
+                this.addChild(component);
+
+                // Use the correct API: MarkdownRenderer.renderMarkdown
+                MarkdownRenderer.renderMarkdown(
                     content,
                     noteContainer,
                     folderNote.path,
                     component
                 );
-                // Register the component for cleanup
-                this.addChild(component);
             } catch (e) {
                 console.error('Error rendering folder note:', e);
                 noteContainer.setText('Error rendering note.');
@@ -1018,13 +1019,13 @@ export class PortalsView extends ItemView {
             noteContainer.setText('Error reading note.');
         });
 
-        // Click to open (but not on links)
+        // Click to open the note (ignore clicks on links)
         noteContainer.addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('a')) return;
             this.app.workspace.getLeaf().openFile(folderNote);
         });
     }
-
+    
     //--End of renderFolderNotesTab
 
 
