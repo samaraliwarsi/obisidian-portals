@@ -117,20 +117,24 @@ export default class PortalsPlugin extends Plugin {
 
     async setupLeftSidebar() {
         const { workspace } = this.app;
-        // Check if our view is already in the left sidebar
-        let portalsLeaf = workspace.getLeavesOfType(VIEW_TYPE_PORTALS)[0];
-        if (!portalsLeaf) {
-            // Create a new leaf in the left sidebar
-            const newLeaf = workspace.getLeftLeaf(false);
-            if (newLeaf) {
-                await newLeaf.setViewState({ type: VIEW_TYPE_PORTALS, active: true });
-                portalsLeaf = newLeaf;
-            } else {
-                return;
-            }
+
+        // First, try to find an existing Portals leaf in the left sidebar
+        const leftSidebar = workspace.leftSplit;
+        const existingLeaf = workspace.getLeavesOfType(VIEW_TYPE_PORTALS).find(leaf =>
+            leaf.getRoot() === leftSidebar
+        );
+
+        if (existingLeaf) {
+            // If one exists, just reveal it
+            workspace.revealLeaf(existingLeaf);
+            return;
         }
-        // Make the Portals leaf active (brings it to front)
-        workspace.revealLeaf(portalsLeaf);
+
+        // Otherwise, create a new leaf in the left sidebar
+        const newLeaf = workspace.getLeftLeaf(false);
+        if (!newLeaf) return;
+        await newLeaf.setViewState({ type: VIEW_TYPE_PORTALS, active: true });
+        workspace.revealLeaf(newLeaf);
     }
 
     private refreshAllRecentTabs() {

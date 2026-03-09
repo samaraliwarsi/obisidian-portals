@@ -2,7 +2,6 @@ import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Plat
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
-import { it } from 'node:test';
 
 const SIDE_TAB_ICONS: Record<string, string> = {
     recent: 'clock-counter-clockwise',
@@ -67,6 +66,7 @@ export class PortalsView extends ItemView {
     private currentSplitter: HTMLElement | null = null;
     private boundMouseMove: (e: MouseEvent) => void;
     private boundMouseUp: () => void;
+    private sortableInstance: Sortable | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -127,25 +127,6 @@ export class PortalsView extends ItemView {
             });
             // Store it to unregister later
             (this as any).bookmarksPluginRef = bookmarksPluginRef;
-        } else {
-            // Fallback: try various workspace events
-            const workspaceEvents = ['bookmarks-changed', 'bookmarks:changed', 'bookmarks-updated'];
-            (this as any).bookmarksWorkspaceRefs = [];
-            workspaceEvents.forEach(eventName => {
-                const ref = (this.app.workspace as any).on(eventName, () => {
-                    console.log(`workspace event ${eventName} fired`);
-                    const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
-                    if (secondaryPanel) {
-                        const contentEl = secondaryPanel.querySelector('.portals-split-content');
-                        if (contentEl) {
-                            (contentEl as HTMLElement).empty();
-                            this.renderBookmarksTab(contentEl as HTMLElement);
-                        }
-                    }
-                });
-                (this as any).bookmarksWorkspaceRefs.push(ref);
-                this.registerEvent(ref);
-            });
         }
     }
 
@@ -229,6 +210,10 @@ export class PortalsView extends ItemView {
     }
 
     private hideTooltip(delay = 0) {
+        if (this.tooltipTimeout) {
+            window.clearTimeout(this.tooltipTimeout);
+            this.tooltipTimeout = null;
+        }
         if (delay > 0) {
             this.tooltipTimeout = window.setTimeout(() => {
                 if (this.tooltipEl) {
@@ -282,6 +267,11 @@ export class PortalsView extends ItemView {
             if (spaces.length === 0) {
                 container.createEl('p', { text: 'No portals configured. Add some in settings.' });
                 return;
+            }
+
+            if (this.sortableInstance) {
+                this.sortableInstance.destroy();
+                this.sortableInstance = null;
             }
 
             // Tab bar
@@ -374,7 +364,7 @@ export class PortalsView extends ItemView {
                 });
             }
 
-            new Sortable(tabBar, {
+           this.sortableInstance = new Sortable(tabBar, {
                 animation: 150,
                 delay: 400,
                 delayOnTouchOnly: true,
@@ -786,7 +776,12 @@ export class PortalsView extends ItemView {
     private renderBookmarksTab(contentEl: HTMLElement) {
     const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
     if (!bookmarksPlugin || !bookmarksPlugin.enabled) {
-        contentEl.createEl('p', { text: 'The Bookmarks core plugin is not enabled. Please enable it in Settings → Core plugins.' });
+        contentEl.createEl('p', { text: 'The Bookmarks core plugin is not enabled. Settings → Core plugins.' });
+        return;
+    }
+
+    if (!bookmarksPlugin.instance) {
+        contentEl.createEl('p', { text: 'Bookmarks plugin instance not found. Restart Obsidian' });
         return;
     }
 
@@ -813,21 +808,7 @@ export class PortalsView extends ItemView {
             bookmarksPlugin.instance.delete(itemToDelete);
         } else if (itemToDelete.id && typeof bookmarksPlugin.instance?.deleteItem === 'function') {
             bookmarksPlugin.instance.deleteItem(itemToDelete.id);
-        } else {
-            // Manual removal: find index and splice
-            const index = items.indexOf(itemToDelete);
-            if (index !== -1) {
-                items.splice(index, 1);
-                // Try to save the plugin data
-                if (typeof bookmarksPlugin.instance?.save === 'function') {
-                    bookmarksPlugin.instance.save();
-                } else if (typeof bookmarksPlugin.saveData === 'function') {
-                    bookmarksPlugin.saveData(bookmarksPlugin.instance);
-                } else {
-                    console.warn('Could not save bookmarks after deletion – you may need to restart Obsidian.');
-                }
-            }
-        }
+        } 
         refreshBookmarksTab();
     };
 
