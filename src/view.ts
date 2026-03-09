@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Plat
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
+import { it } from 'node:test';
 
 const SIDE_TAB_ICONS: Record<string, string> = {
     recent: 'clock-counter-clockwise',
@@ -108,6 +109,21 @@ export class PortalsView extends ItemView {
         this.registerEvent(this.app.workspace.on('layout-change', () => {
             if (!this.renaming) this.renderContent();
         }));
+
+        const bookMarksRef = (this.app.workspace as any).on('bookmarks-changed', () => {
+            console.log('bookmarks-changed event fired');
+            if (this.plugin.settings.activeSplitTab === 'bookmarks') {
+                const secondaryPabel = this.containerEl.querySelector('.portals-secondary-panel');
+                if (secondaryPabel) {
+                    const contentEl = secondaryPabel.querySelector('.portals-split-content');
+                    if (contentEl) {
+                        (contentEl as HTMLElement).empty();
+                        this.renderBookmarksTab(contentEl as HTMLElement);
+                    }
+                }
+            }
+        });
+        this.registerEvent(bookMarksRef);
     }
 
     async onClose() {
@@ -728,8 +744,156 @@ export class PortalsView extends ItemView {
         
             placeholder.createEl('p', { text: 'Folder notes will appear here.' });
             placeholder.createEl('p', { text: '(Coming soon)' });
+        } else if (tabId === 'bookmarks') {
+            this.renderBookmarksTab(contentEl);
         }
     }
+
+    // Bookmarks
+
+    private renderBookmarksTab(contentEl: HTMLElement) {
+    const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+    if (!bookmarksPlugin || !bookmarksPlugin.enabled) {
+        contentEl.createEl('p', { text: 'The Bookmarks core plugin is not enabled. Please enable it in Settings → Core plugins.' });
+        return;
+    }
+
+    const items = bookmarksPlugin.instance?.items;
+    if (!items || !Array.isArray(items)) {
+        contentEl.createEl('p', { text: 'No bookmarks found.' });
+        return;
+    }
+
+    // Helper to refresh the bookmarks tab after deletion
+    const refreshBookmarksTab = () => {
+        const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+        if (secondaryPanel) {
+            this.renderSplitTabContent(secondaryPanel as HTMLElement, 'bookmarks');
+        }
+    };
+
+    // Helper to delete a bookmark item
+    const deleteBookmark = (itemToDelete: any) => {
+        // Try different deletion methods
+        if (typeof bookmarksPlugin.instance?.removeItem === 'function') {
+            bookmarksPlugin.instance.removeItem(itemToDelete);
+        } else if (typeof bookmarksPlugin.instance?.delete === 'function') {
+            bookmarksPlugin.instance.delete(itemToDelete);
+        } else if (itemToDelete.id && typeof bookmarksPlugin.instance?.deleteItem === 'function') {
+            bookmarksPlugin.instance.deleteItem(itemToDelete.id);
+        } else {
+            // Manual removal: find index and splice
+            const index = items.indexOf(itemToDelete);
+            if (index !== -1) {
+                items.splice(index, 1);
+                // Try to save the plugin data
+                if (typeof bookmarksPlugin.instance?.save === 'function') {
+                    bookmarksPlugin.instance.save();
+                } else if (typeof bookmarksPlugin.saveData === 'function') {
+                    bookmarksPlugin.saveData(bookmarksPlugin.instance);
+                } else {
+                    console.warn('Could not save bookmarks after deletion – you may need to restart Obsidian.');
+                }
+            }
+        }
+        refreshBookmarksTab();
+    };
+
+    // Recursive render function
+    const renderItem = (item: any, container: HTMLElement) => {
+        if (item.children && Array.isArray(item.children) && item.children.length > 0) {
+            // It's a group/folder
+            const details = container.createEl('details', { cls: 'folder-details' });
+            details.setAttr('open', 'true');
+            const summary = details.createEl('summary', { cls: 'folder-summary' });
+            const iconSpan = summary.createSpan({ cls: 'folder-icon' });
+            iconSpan.createEl('i', { cls: 'ph ph-folder' });
+            const nameSpan = summary.createSpan({ text: item.title || 'Group' });
+            nameSpan.addClass('portals-item-name');
+
+            // Context menu on group summary
+            summary.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const menu = new Menu();
+                menu.addItem(menuItem => menuItem
+                    .setTitle('Delete group')
+                    .setIcon('trash')
+                    .onClick(() => {
+                        if (confirm(`Delete bookmark group "${item.title || 'Group'}"?`)) {
+                            deleteBookmark(item);
+                        }
+                    })
+                );
+                menu.showAtPosition({ x: e.clientX, y: e.clientY });
+            });
+
+            const childrenContainer = details.createDiv({ cls: 'folder-children' });
+            item.children.forEach((child: any) => renderItem(child, childrenContainer));
+        } else {
+            // Leaf item: file, url, or folder (without children)
+            const fileEl = container.createDiv({ cls: 'file-item' });
+            const iconSpan = fileEl.createSpan({ cls: 'file-icon' });
+
+            let iconClass = 'ph-file';
+            if (item.type === 'url') iconClass = 'ph-link';
+            else if (item.type === 'folder') iconClass = 'ph-folder';
+            else if (item.type === 'file') iconClass = 'ph-file';
+            else if (item.url) iconClass = 'ph-link';
+            else if (item.path) {
+                const abstractFile = this.app.vault.getAbstractFileByPath(item.path);
+                if (abstractFile instanceof TFolder) iconClass = 'ph-folder';
+                else iconClass = 'ph-file';
+            }
+
+            iconSpan.createEl('i', { cls: `ph ${iconClass}` });
+
+            const displayName = item.title || item.path || item.url || 'Untitled';
+            const nameSpan = fileEl.createSpan({ text: displayName });
+            nameSpan.addClass('portals-item-name');
+            fileEl.dataset.path = item.path || item.url;
+
+            // Left‑click to open
+            fileEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (item.type === 'url' || item.url) {
+                    window.open(item.url || item.path, '_blank');
+                } else if (item.type === 'file' || item.path) {
+                    const file = this.app.vault.getAbstractFileByPath(item.path);
+                    if (file instanceof TFile) {
+                        this.app.workspace.getLeaf().openFile(file);
+                    } else if (file instanceof TFolder) {
+                        this.app.workspace.openLinkText(item.path, '/', false);
+                    }
+                } else if (item.type === 'folder') {
+                    this.app.workspace.openLinkText(item.path, '/', false);
+                }
+            });
+
+            // Right‑click context menu for deletion
+            fileEl.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const menu = new Menu();
+                menu.addItem(menuItem => menuItem
+                    .setTitle('Delete bookmark')
+                    .setIcon('trash')
+                    .onClick(() => {
+                        if (confirm(`Delete bookmark "${displayName}"?`)) {
+                            deleteBookmark(item);
+                        }
+                    })
+                );
+                menu.showAtPosition({ x: e.clientX, y: e.clientY });
+            });
+        }
+    };
+
+    items.forEach((item: any) => renderItem(item, contentEl));
+}
+
+    // End of bookmark
+
 
     async renderContent() {
         const container = this.containerEl.children[1] as HTMLElement;
