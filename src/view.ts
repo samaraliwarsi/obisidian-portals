@@ -106,23 +106,26 @@ export class PortalsView extends ItemView {
             if (!this.renaming) this.renderContent();
         }));
 
-        // Try to listen directly to the bookmarks plugin
-        const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
-        let bookmarksPluginRef: any = null;
-        if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.on === 'function') {
-            bookmarksPluginRef = bookmarksPlugin.instance.on('changed', () => {
-                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
-                if (secondaryPanel) {
-                    const contentEl = secondaryPanel.querySelector('.portals-split-content');
-                    if (contentEl) {
-                        (contentEl as HTMLElement).empty();
-                        this.renderBookmarksTab(contentEl as HTMLElement);
+        // Set up bookmarks change listener (using internal plugin for now)
+        const setupBookmarksListener = () => {
+            const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+            if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.on === 'function') {
+                const ref = bookmarksPlugin.instance.on('changed', () => {
+                    const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                    if (secondaryPanel) {
+                        const contentEl = secondaryPanel.querySelector('.portals-split-content');
+                        if (contentEl) {
+                            (contentEl as HTMLElement).empty();
+                            this.renderBookmarksTab(contentEl as HTMLElement);
+                        }
                     }
-                }
-            });
-            // Store it to unregister later
-            (this as any).bookmarksPluginRef = bookmarksPluginRef;
-        }
+                });
+                // Store ref for cleanup
+                (this as any).bookmarksListenerRef = ref;
+            }
+        };
+        setupBookmarksListener();
+
 
         //---FolderNotes 
         const refreshFolderNotes = () => {
@@ -170,14 +173,15 @@ export class PortalsView extends ItemView {
             (this as any).folderNoteEventRefs = null;
         }
 
-        // Clean up bookmarks plugin listener if we added one
-        const bookmarksPluginRef = (this as any).bookmarksPluginRef;
-            if (bookmarksPluginRef) {
-                const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
-                if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
-                    bookmarksPlugin.instance.off('changed', bookmarksPluginRef);
-                }
+        // Clean up bookmarks listener
+        const ref = (this as any).bookmarksListenerRef;
+        if (ref) {
+            const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+            if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
+                bookmarksPlugin.instance.off('changed', ref);
             }
+            (this as any).bookmarksListenerRef = null;
+        }
 
         document.removeEventListener('mousemove', this.handleDragMove);
         document.removeEventListener('touchmove', this.handleDragMove);
@@ -811,48 +815,53 @@ export class PortalsView extends ItemView {
     // Bookmarks
 
     private renderBookmarksTab(contentEl: HTMLElement) {
-    const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
-    if (!bookmarksPlugin || !bookmarksPlugin.enabled) {
-        contentEl.createEl('p', { text: 'The Bookmarks core plugin is not enabled. Settings → Core plugins.' });
-        return;
+    // Try public API first (future-proofing)
+    const publicBookmarks = (this.app as any).bookmarks;
+    let items: any[] = [];
+    let usePublic = false;
+
+    if (publicBookmarks) {
+        // Public API might have getBookmarks() or .items
+        if (typeof publicBookmarks.getBookmarks === 'function') {
+            items = publicBookmarks.getBookmarks();
+            usePublic = true;
+        } else if (Array.isArray(publicBookmarks.items)) {
+            items = publicBookmarks.items;
+            usePublic = true;
+        }
     }
 
-    if (!bookmarksPlugin.instance) {
-        contentEl.createEl('p', { text: 'Bookmarks plugin instance not found. Restart Obsidian' });
-        return;
+    // Fallback to internal plugin if public API not available or returned nothing
+    if (!usePublic || items.length === 0) {
+        const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+        if (!bookmarksPlugin?.enabled || !bookmarksPlugin.instance) {
+            contentEl.createEl('p', { text: 'The Bookmarks core plugin is not enabled. Settings → Core plugins.' });
+            return;
+        }
+        items = bookmarksPlugin.instance.items;
+        if (!items || !Array.isArray(items)) {
+            contentEl.createEl('p', { text: 'No bookmarks found.' });
+            return;
+        }
     }
 
-    const items = bookmarksPlugin.instance?.items;
-    if (!items || !Array.isArray(items)) {
+    if (items.length === 0) {
         contentEl.createEl('p', { text: 'No bookmarks found.' });
         return;
     }
 
-    // Helper to refresh the bookmarks tab after deletion
-    const refreshBookmarksTab = () => {
+    // Helper to refresh the tab after deletion
+    const refresh = () => {
         const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
         if (secondaryPanel) {
             this.renderSplitTabContent(secondaryPanel as HTMLElement, 'bookmarks');
         }
     };
 
-    // Helper to delete a bookmark item
-    const deleteBookmark = (itemToDelete: any) => {
-        // Try different deletion methods
-        if (typeof bookmarksPlugin.instance?.removeItem === 'function') {
-            bookmarksPlugin.instance.removeItem(itemToDelete);
-        } else if (typeof bookmarksPlugin.instance?.delete === 'function') {
-            bookmarksPlugin.instance.delete(itemToDelete);
-        } else if (itemToDelete.id && typeof bookmarksPlugin.instance?.deleteItem === 'function') {
-            bookmarksPlugin.instance.deleteItem(itemToDelete.id);
-        } 
-        refreshBookmarksTab();
-    };
-
     // Recursive render function
     const renderItem = (item: any, container: HTMLElement) => {
         if (item.children && Array.isArray(item.children) && item.children.length > 0) {
-            // It's a group/folder
+            // Folder/group
             const details = container.createEl('details', { cls: 'folder-details' });
             details.setAttr('open', 'true');
             const summary = details.createEl('summary', { cls: 'folder-summary' });
@@ -861,7 +870,6 @@ export class PortalsView extends ItemView {
             const nameSpan = summary.createSpan({ text: item.title || 'Group' });
             nameSpan.addClass('portals-item-name');
 
-            // Context menu on group summary
             summary.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -871,7 +879,7 @@ export class PortalsView extends ItemView {
                     .setIcon('trash')
                     .onClick(() => {
                         if (confirm(`Delete bookmark group "${item.title || 'Group'}"?`)) {
-                            deleteBookmark(item);
+                            this.deleteBookmarkItem(item, usePublic, refresh);
                         }
                     })
                 );
@@ -881,7 +889,7 @@ export class PortalsView extends ItemView {
             const childrenContainer = details.createDiv({ cls: 'folder-children' });
             item.children.forEach((child: any) => renderItem(child, childrenContainer));
         } else {
-            // Leaf item: file, url, or folder (without children)
+            // Leaf item
             const fileEl = container.createDiv({ cls: 'file-item' });
             const iconSpan = fileEl.createSpan({ cls: 'file-icon' });
 
@@ -930,7 +938,7 @@ export class PortalsView extends ItemView {
                     .setIcon('trash')
                     .onClick(() => {
                         if (confirm(`Delete bookmark "${displayName}"?`)) {
-                            deleteBookmark(item);
+                            this.deleteBookmarkItem(item, usePublic, refresh);
                         }
                     })
                 );
@@ -942,6 +950,27 @@ export class PortalsView extends ItemView {
     items.forEach((item: any) => renderItem(item, contentEl));
 }
 
+// Helper method to delete a bookmark item (add this to your class)
+private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
+    if (usePublic) {
+        const publicBookmarks = (this.app as any).bookmarks;
+        if (publicBookmarks?.remove && item.id) {
+            publicBookmarks.remove(item.id);
+        }
+    } else {
+        const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+        if (!bookmarksPlugin?.instance) return;
+        // Try different deletion methods
+        if (typeof bookmarksPlugin.instance.removeItem === 'function') {
+            bookmarksPlugin.instance.removeItem(item);
+        } else if (typeof bookmarksPlugin.instance.delete === 'function') {
+            bookmarksPlugin.instance.delete(item);
+        } else if (item.id && typeof bookmarksPlugin.instance.deleteItem === 'function') {
+            bookmarksPlugin.instance.deleteItem(item.id);
+        }
+    }
+    refresh();
+}
     // End of bookmark
 
     // Folder note
