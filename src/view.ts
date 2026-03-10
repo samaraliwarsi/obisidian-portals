@@ -111,7 +111,6 @@ export class PortalsView extends ItemView {
         let bookmarksPluginRef: any = null;
         if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.on === 'function') {
             bookmarksPluginRef = bookmarksPlugin.instance.on('changed', () => {
-                console.log('bookmarks plugin changed event fired');
                 const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
                 if (secondaryPanel) {
                     const contentEl = secondaryPanel.querySelector('.portals-split-content');
@@ -985,8 +984,6 @@ export class PortalsView extends ItemView {
         const folderNote = folder.children.find((child): child is TFile => 
             child instanceof TFile && this.isFolderNote(child, folder)
         );
-        console.log('Folder note found:', folderNote ? folderNote.path : 'none');
-
         if (!folderNote) {
             contentEl.createEl('p', { text: 'No folder note found for this folder. Create one using the folder context menu.' });
             return;
@@ -1028,76 +1025,49 @@ export class PortalsView extends ItemView {
         });
     }
 
-    // New method: recursively process embeds
+    //--Embed Method
     private async processEmbeds(container: HTMLElement, component: Component, sourcePath: string, depth = 0): Promise<void> {
         if (depth > 5) return;
-
         const embeds = container.querySelectorAll('.internal-embed:not(.processed)');
-        const embedArray = Array.from(embeds);
-
-        for (const embed of embedArray) {
+        for (const embed of Array.from(embeds)) {
             embed.classList.add('processed');
-
             const src = embed.getAttribute('src') || embed.getAttribute('data-src');
             if (!src) continue;
 
-            const targetFile = this.app.metadataCache.getFirstLinkpathDest(src, sourcePath);
+            const parts = src.split('#');
+            const cleanSrc = parts[0];
+            if (!cleanSrc) continue;
+            const anchor = parts.length > 1 ? parts[1] : null;
+
+            const targetFile = this.app.metadataCache.getFirstLinkpathDest(cleanSrc, sourcePath);
             if (!(targetFile instanceof TFile)) continue;
 
-            const targetContainer = createDiv();
-
-            // Handle based on file extension
+            // Recursively render Markdown files
             if (targetFile.extension === 'md') {
-                // Markdown file – use standard renderer
-                const targetContent = await this.app.vault.read(targetFile);
-                MarkdownRenderer.renderMarkdown(
-                    targetContent,
-                    targetContainer,
-                    targetFile.path,
-                    component
-                );
-                await this.processEmbeds(targetContainer, component, targetFile.path, depth + 1);
-            } 
-            else if (targetFile.extension === 'base') {
-                // Try to use Bases plugin
-                const basesPlugin = (this.app as any).internalPlugins?.getPluginById('bases');
-                if (basesPlugin?.instance) {
-                    // Look for a render method – adjust method name as needed
-                    const renderMethod = basesPlugin.instance.renderPreview || basesPlugin.instance.render;
-                    if (typeof renderMethod === 'function') {
-                        await renderMethod.call(basesPlugin.instance, targetFile, targetContainer, component);
-                    } else {
-                        // Fallback: create a link
-                        targetContainer.createEl('a', { text: targetFile.name, href: '#' })
-                            .addEventListener('click', (e) => {
-                                e.preventDefault();
-                                this.app.workspace.getLeaf().openFile(targetFile);
-                            });
-                    }
-                } else {
-                    // Plugin not enabled – show link
-                    targetContainer.createEl('a', { text: targetFile.name, href: '#' })
-                        .addEventListener('click', (e) => {
-                            e.preventDefault();
-                            this.app.workspace.getLeaf().openFile(targetFile);
-                        });
-                }
-            } 
-            else {
-                // Any other file type – show as clickable link
-                targetContainer.createEl('a', { text: targetFile.name, href: '#' })
-                    .addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.app.workspace.getLeaf().openFile(targetFile);
-                    });
+                const targetContainer = container.createDiv({ cls: 'markdown-preview-view' });
+                targetContainer.setAttr('data-source-path', targetFile.path);
+                const content = await this.app.vault.read(targetFile);
+                const childComponent = new Component();
+                component.addChild(childComponent);
+                await MarkdownRenderer.renderMarkdown(content, targetContainer, targetFile.path, childComponent);
+                await this.processEmbeds(targetContainer, childComponent, targetFile.path, depth + 1);
+                embed.replaceWith(targetContainer);
+                continue;
             }
 
-            // Replace the embed element with the rendered container
-            embed.replaceWith(targetContainer);
+            // For all other file types (including .base), create a styled link
+            const linkContainer = container.createDiv({ cls: 'portals-embed-link' });
+            const link = linkContainer.createEl('a', { href: '#' });
+            link.setText(targetFile.name + (anchor ? ` → ${anchor}` : ''));
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.app.workspace.getLeaf().openFile(targetFile);
+            });
+            embed.replaceWith(linkContainer);
         }
     }
     
-    //--End of renderFolderNotesTab
+    //--End of process embed, start of renderContent
 
 
     async renderContent() {

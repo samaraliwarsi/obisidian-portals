@@ -5328,8 +5328,25 @@ justify-content: flex-start !important;
   }
 }
 
-/*===FOLDER NOTES===*/
-
+/*===FOLDER NOTE , Bases Styling ===*/
+.portals-embed-link {
+    display: inline-block;
+    margin: 4px 0;
+}
+.portals-embed-link a {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+.portals-embed-link a:hover {
+    background: var(--interactive-accent-hover);
+    text-decoration: none;
+}
 
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */
 
