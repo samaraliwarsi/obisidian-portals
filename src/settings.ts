@@ -150,7 +150,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .onClick(() => {
                     new ChooseTabsModal(this.app, this.plugin, (tabs) => {
                         this.plugin.settings.splitViewTabs = tabs;
-                        if (!tabs.contains(this.plugin.settings.activeSplitTab)) { 
+                        if (!tabs.includes(this.plugin.settings.activeSplitTab)) { 
                             this.plugin.settings.activeSplitTab = tabs[0] || 'recent';
                         }
                         this.plugin.saveSettings();
