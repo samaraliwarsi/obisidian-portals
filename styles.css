@@ -5037,7 +5037,7 @@ justify-content: flex-start !important;
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding-left: 6px;
+    padding-left: 4px;
 }
 
 /* Splitter */
@@ -5329,7 +5329,7 @@ justify-content: flex-start !important;
   }
 }
 
-/*===FOLDER NOTE , Bases Styling ===*/
+/*===FOLDER NOTE , Bases Styling & User message Display===*/
 .portals-embed-link {
     display: inline-block;
     margin: 4px 0;
@@ -5347,6 +5347,13 @@ justify-content: flex-start !important;
 .portals-embed-link a:hover {
     background: var(--interactive-accent-hover);
     text-decoration: none;
+}
+
+.portals-folder-note-message {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */

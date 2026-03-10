@@ -352,7 +352,8 @@ export class PortalsView extends ItemView {
             activeSplitTab: s.activeSplitTab,
             splitViewTabs: s.splitViewTabs?.join(',') || '',
             recentFilesList: s.recentFilesList?.join(',') || '',
-            showFolderNotesInTree: s.showFolderNotesInTree
+            showFolderNotesInTree: s.showFolderNotesInTree,
+            enableFolderNotes: s.enableFolderNotes
         });
     }
 
@@ -806,7 +807,14 @@ export class PortalsView extends ItemView {
             }
 
         } else if (tabId === 'folder-notes') {
-            this.renderFolderNotesTab(contentEl)
+            if (!this.plugin.settings.enableFolderNotes) {
+                contentEl.createEl('p', {
+                    text: 'Folder notes are disabled. Enable them in portal settings > Enable folder notes',
+                    cls: 'portals-folder-note-message'
+                });
+                return;
+            }
+            this.renderFolderNotesTab(contentEl);
         } else if (tabId === 'bookmarks') {
             this.renderBookmarksTab(contentEl);
         }
@@ -976,26 +984,37 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
     // Folder note
 
     private async createFolderNote(folder: TFolder) {
-        const noteName = folder.name + '.md';
-        const notePath = `${folder.path}/${noteName}`;
-        try {
-            const file = await this.app.vault.create(notePath, `# ${folder.name}\n\n`);
-            await this.app.workspace.getLeaf().openFile(file);
-            // Optionally refresh the side portal tab if it's active
-            if (this.plugin.settings.activeSplitTab === 'folder-notes') {
-                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
-                if (secondaryPanel) {
-                    const contentEl = secondaryPanel.querySelector('.portals-split-content');
-                    if (contentEl) {
-                        (contentEl as HTMLElement).empty();
-                        this.renderFolderNotesTab(contentEl as HTMLElement);
-                    }
-                }
-            }
-        } catch (err) {
-            new Notice(`Failed to create folder note: ${err}`);
+    const noteName = folder.name + '.md';
+    const notePath = folder.path === '/' ? noteName : `${folder.path}/${noteName}`;
+
+    try {
+        const file = await this.app.vault.create(notePath, `# ${folder.name}\n\n`);
+        await this.app.workspace.getLeaf().openFile(file);
+        new Notice('Folder note created.');
+    } catch (err) {
+        // If creation fails because file already exists, try to open it
+        const existing = this.app.vault.getAbstractFileByPath(notePath);
+        if (existing instanceof TFile) {
+            new Notice('Folder note already exists. Opening it.');
+            await this.app.workspace.getLeaf().openFile(existing);
+        } else {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Failed to create folder note: ${message}`);
         }
     }
+
+    // Refresh side portal if active
+    if (this.plugin.settings.activeSplitTab === 'folder-notes') {
+        const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+        if (secondaryPanel) {
+            const contentEl = secondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+            if (contentEl) {
+                contentEl.empty();
+                this.renderFolderNotesTab(contentEl);
+            }
+        }
+    }
+}
 
     //--RenderFolderNotesTab
     
@@ -1005,40 +1024,61 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             contentEl.createEl('p', { text: 'Select a folder space to view its folder note.' });
             return;
         }
-        const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
-        if (!(folder instanceof TFolder)) {
-            contentEl.createEl('p', { text: 'Folder not found.' });
-            return;
-        }
-        const folderNote = folder.children.find((child): child is TFile => 
-            child instanceof TFile && this.isFolderNote(child, folder)
-        );
-        if (!folderNote) {
-            contentEl.createEl('p', { text: 'No folder note found for this folder. Create one using the folder context menu.' });
-            return;
+
+        let targetFile: TFile | null = null;
+
+        if (selectedSpace.path === '/') {
+            // Root folder: look for a file named after the vault
+            const vaultName = this.app.vault.getName();
+            const rootNotePath = vaultName + '.md';
+            const file = this.app.vault.getAbstractFileByPath(rootNotePath);
+            targetFile = file instanceof TFile ? file : null;
+
+            if (!targetFile) {
+                contentEl.createEl('p', {
+                    text: 'No folder note found for the vault root. Create a file named like your vault (e.g., "MyVault.md") at the root to use as folder note.',
+                    cls: 'portals-folder-note-message'
+                });
+                return;
+            }
+        } else {
+            // Non‑root folder: get the folder and find its note
+            const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+            if (!(folder instanceof TFolder)) {
+                contentEl.createEl('p', { text: 'Folder not found.' });
+                return;
+            }
+
+            const folderNote = folder.children.find((child): child is TFile => 
+                child instanceof TFile && this.isFolderNote(child, folder)
+            );
+
+            if (!folderNote) {
+                contentEl.createEl('p', { text: 'No folder note found for this folder. Create one using the folder context menu.' });
+                return;
+            }
+
+            targetFile = folderNote;
         }
 
-        const noteContainer = contentEl.createDiv({ cls: 'markdown-preview-view' });
+        // Render the note content
+        this.renderFolderNoteContent(targetFile, contentEl);
+    }
+
+    //---RenderFoldernote Helper
+
+    private renderFolderNoteContent(file: TFile, container: HTMLElement) {
+        const noteContainer = container.createDiv({ cls: 'markdown-preview-view' });
         noteContainer.style.height = '100%';
         noteContainer.style.overflowY = 'auto';
         noteContainer.style.cursor = 'pointer';
 
-        this.app.vault.read(folderNote).then(async (content) => {
+        this.app.vault.read(file).then(async (content) => {
             try {
                 const component = new Component();
                 this.addChild(component);
-
-                // Initial render
-                MarkdownRenderer.renderMarkdown(
-                    content,
-                    noteContainer,
-                    folderNote.path,
-                    component
-                );
-
-                // Process embeds recursively
-                await this.processEmbeds(noteContainer, component, folderNote.path);
-
+                await MarkdownRenderer.renderMarkdown(content, noteContainer, file.path, component);
+                await this.processEmbeds(noteContainer, component, file.path);
             } catch (e) {
                 console.error('Error rendering folder note:', e);
                 noteContainer.setText('Error rendering note.');
@@ -1050,7 +1090,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
         noteContainer.addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('a')) return;
-            this.app.workspace.getLeaf().openFile(folderNote);
+            this.app.workspace.getLeaf().openFile(file);
         });
     }
 
@@ -1315,18 +1355,20 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             .setIcon('layout-dashboard')
             .onClick(() => this.newCanvasInFolder(folder)));
 
-        const folderNote = folder.children.find((child): child is TFile =>
-            child instanceof TFile && this.isFolderNote(child, folder));
-        if (folderNote) {
-            menu.addItem(item => item
-                .setTitle('Open folder note')
-                .setIcon('note')
-                .onClick(() => this.app.workspace.getLeaf().openFile(folderNote)));
-        } else {
-            menu.addItem(item => item
-                .setTitle('Create folder note')
-                .setIcon('plus')
-                .onClick(() => this.createFolderNote(folder)));
+        if (this.plugin.settings.enableFolderNotes && folder.path != '/') {
+            const folderNote = folder.children.find((child): child is TFile =>
+                child instanceof TFile && this.isFolderNote(child, folder));
+            if (folderNote) {
+                menu.addItem(item => item
+                    .setTitle('Open folder note')
+                    .setIcon('note')
+                    .onClick(() => this.app.workspace.getLeaf().openFile(folderNote)));
+            } else {
+                menu.addItem(item => item
+                    .setTitle('Create folder note')
+                    .setIcon('plus')
+                    .onClick(() => this.createFolderNote(folder)));
+            }
         }
 
         menu.addSeparator();
@@ -1741,9 +1783,10 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             for (const child of sorted) {
                 if (child instanceof TFolder) {
                     this.buildFolderTree(child, childrenContainer, 'folder');
-                } else if (child instanceof TFile) {
-                    if (!this.plugin.settings.showFolderNotesInTree && this.isFolderNote(child, folder)) {
-                        continue;
+                }   if (child instanceof TFile) {
+                    const isFolderNoteFile = this.isFolderNote(child, folder);
+                    if (isFolderNoteFile && this.plugin.settings.enableFolderNotes) {
+                        if (!this.plugin.settings.showFolderNotesInTree) continue;
                     }
                     const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
                     const fileIcon = fileEl.createSpan({ cls: 'file-icon' });

@@ -30,6 +30,7 @@ export interface SpacesSettings {
     splitViewTabs: string[];
     activeSplitTab: string;
     showFolderNotesInTree: boolean;
+    enableFolderNotes: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     splitViewTabs: ['recent', 'folder-notes', 'bookmarks'],
     activeSplitTab: 'recent',
     showFolderNotesInTree: false,
+    enableFolderNotes: true,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -116,10 +118,22 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
 
-        //-- Folder Notes
+        // -- Folder Notes Global Toggle
+        new Setting(containerEl)
+            .setName('Enable folder notes')
+            .setDesc('When disabled, folder notes are hidden from the file tree, the side panel tab shows a notice, and folder‑note context menu items are removed.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableFolderNotes)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableFolderNotes = value;
+                    await this.plugin.saveSettings();
+                    this.display(); // refresh settings UI if needed
+                }));
+        
+        //-- Folder Notes in Side Portal
         new Setting(containerEl)
             .setName('Show folder notes in file tree')
-            .setDesc('If enabled, folder notes appear as regular files in treem. Otherwise they are hidden.')
+            .setDesc('When folder notes are enabled, controls if they appear in file tree. If folder notes are disable, this setting has no effect.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showFolderNotesInTree)
                 .onChange(async (value) => {
