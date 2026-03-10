@@ -990,26 +990,27 @@ export class PortalsView extends ItemView {
             return;
         }
 
-        // Create container with proper classes
         const noteContainer = contentEl.createDiv({ cls: 'markdown-preview-view' });
         noteContainer.style.height = '100%';
         noteContainer.style.overflowY = 'auto';
         noteContainer.style.cursor = 'pointer';
 
-        // Read and render the note
-        this.app.vault.read(folderNote).then(content => {
+        this.app.vault.read(folderNote).then(async (content) => {
             try {
-                // Use a plain Component (not MarkdownRenderChild)
                 const component = new Component();
                 this.addChild(component);
 
-                // Use the correct API: MarkdownRenderer.renderMarkdown
+                // Initial render
                 MarkdownRenderer.renderMarkdown(
                     content,
                     noteContainer,
                     folderNote.path,
                     component
                 );
+
+                // Process embeds recursively
+                await this.processEmbeds(noteContainer, component, folderNote.path);
+
             } catch (e) {
                 console.error('Error rendering folder note:', e);
                 noteContainer.setText('Error rendering note.');
@@ -1019,11 +1020,79 @@ export class PortalsView extends ItemView {
             noteContainer.setText('Error reading note.');
         });
 
-        // Click to open the note (ignore clicks on links)
         noteContainer.addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('a')) return;
             this.app.workspace.getLeaf().openFile(folderNote);
         });
+    }
+
+    // New method: recursively process embeds
+    private async processEmbeds(container: HTMLElement, component: Component, sourcePath: string, depth = 0): Promise<void> {
+        if (depth > 5) return;
+
+        const embeds = container.querySelectorAll('.internal-embed:not(.processed)');
+        const embedArray = Array.from(embeds);
+
+        for (const embed of embedArray) {
+            embed.classList.add('processed');
+
+            const src = embed.getAttribute('src') || embed.getAttribute('data-src');
+            if (!src) continue;
+
+            const targetFile = this.app.metadataCache.getFirstLinkpathDest(src, sourcePath);
+            if (!(targetFile instanceof TFile)) continue;
+
+            const targetContainer = createDiv();
+
+            // Handle based on file extension
+            if (targetFile.extension === 'md') {
+                // Markdown file – use standard renderer
+                const targetContent = await this.app.vault.read(targetFile);
+                MarkdownRenderer.renderMarkdown(
+                    targetContent,
+                    targetContainer,
+                    targetFile.path,
+                    component
+                );
+                await this.processEmbeds(targetContainer, component, targetFile.path, depth + 1);
+            } 
+            else if (targetFile.extension === 'base') {
+                // Try to use Bases plugin
+                const basesPlugin = (this.app as any).internalPlugins?.getPluginById('bases');
+                if (basesPlugin?.instance) {
+                    // Look for a render method – adjust method name as needed
+                    const renderMethod = basesPlugin.instance.renderPreview || basesPlugin.instance.render;
+                    if (typeof renderMethod === 'function') {
+                        await renderMethod.call(basesPlugin.instance, targetFile, targetContainer, component);
+                    } else {
+                        // Fallback: create a link
+                        targetContainer.createEl('a', { text: targetFile.name, href: '#' })
+                            .addEventListener('click', (e) => {
+                                e.preventDefault();
+                                this.app.workspace.getLeaf().openFile(targetFile);
+                            });
+                    }
+                } else {
+                    // Plugin not enabled – show link
+                    targetContainer.createEl('a', { text: targetFile.name, href: '#' })
+                        .addEventListener('click', (e) => {
+                            e.preventDefault();
+                            this.app.workspace.getLeaf().openFile(targetFile);
+                        });
+                }
+            } 
+            else {
+                // Any other file type – show as clickable link
+                targetContainer.createEl('a', { text: targetFile.name, href: '#' })
+                    .addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.app.workspace.getLeaf().openFile(targetFile);
+                    });
+            }
+
+            // Replace the embed element with the rendered container
+            embed.replaceWith(targetContainer);
+        }
     }
     
     //--End of renderFolderNotesTab
