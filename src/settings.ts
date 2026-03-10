@@ -73,7 +73,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         // ---- Settings toggles ----
         new Setting(containerEl)
             .setName('Replace file explorer in left sidebar')
-            .setDesc('When enabled, Portals replaces the default file explorer on startup. The file explorer remains accesible via commands or Obsidian Tabs.')
+            .setDesc('When enabled, Portals replaces the default file explorer on startup. The file explorer remains accessible via commands or Obsidian Tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.replaceFileExplorer)
                 .onChange(async (value) => {
@@ -121,7 +121,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         // -- Folder Notes Global Toggle
         new Setting(containerEl)
             .setName('Enable folder notes')
-            .setDesc('When disabled, folder notes are hidden from the file tree, the side panel tab shows a notice, and folder‑note context menu items are removed.')
+            .setDesc('When disabled, folder notes are treated as normal files (always in tree), the side panel tab shows a notice, and folder note context menu items are removed.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableFolderNotes)
                 .onChange(async (value) => {
@@ -133,9 +133,10 @@ export class SpacesSettingTab extends PluginSettingTab {
         //-- Folder Notes in Side Portal
         new Setting(containerEl)
             .setName('Show folder notes in file tree')
-            .setDesc('When folder notes are enabled, controls if they appear in file tree. If folder notes are disable, this setting has no effect.')
+            .setDesc('When folder notes are enabled, controls if they appear in file tree. If folder notes are disabled, this setting has no effect.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showFolderNotesInTree)
+                .setDisabled(!this.plugin.settings.enableFolderNotes)
                 .onChange(async (value) => {
                     this.plugin.settings.showFolderNotesInTree = value;
                     await this.plugin.saveSettings();

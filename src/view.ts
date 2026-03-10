@@ -143,7 +143,8 @@ export class PortalsView extends ItemView {
         const folderNoteRenameRef = this.app.vault.on('rename', refreshFolderNotes);
         const folderNoteDeleteRef = this.app.vault.on('delete', refreshFolderNotes);
         const folderNoteCreateRef = this.app.vault.on('create', refreshFolderNotes);
-        (this as any).folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef];
+        const folderNoteModifyRef = this.app.vault.on('modify', refreshFolderNotes);
+        (this as any).folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef, folderNoteModifyRef];
 
 
         // Global drag listeners
@@ -1021,7 +1022,10 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
     private renderFolderNotesTab(contentEl: HTMLElement) {
         const selectedSpace = this.plugin.settings.selectedSpace;
         if (!selectedSpace || selectedSpace.type !== 'folder') {
-            contentEl.createEl('p', { text: 'Select a folder space to view its folder note.' });
+            contentEl.createEl('p', { 
+                text: 'Select a folder portal tab to view its folder note.',
+                cls: 'portals-folder-note-message'
+             });
             return;
         }
 
@@ -1045,7 +1049,10 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             // Non‑root folder: get the folder and find its note
             const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
             if (!(folder instanceof TFolder)) {
-                contentEl.createEl('p', { text: 'Folder not found.' });
+                contentEl.createEl('p', { 
+                    text: 'Folder not found.',
+                    cls: 'portals-folder-note-message'
+                 });
                 return;
             }
 
@@ -1054,7 +1061,10 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             );
 
             if (!folderNote) {
-                contentEl.createEl('p', { text: 'No folder note found for this folder. Create one using the folder context menu.' });
+                contentEl.createEl('p', { 
+                    text: 'No folder note found for this folder. Create one using the folder context menu or start a file with same name as the portal space folder.',
+                    cls: 'portals-folder-note-message'    
+                });
                 return;
             }
 
@@ -1355,7 +1365,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             .setIcon('layout-dashboard')
             .onClick(() => this.newCanvasInFolder(folder)));
 
-        if (this.plugin.settings.enableFolderNotes && folder.path != '/') {
+        if (this.plugin.settings.enableFolderNotes && folder.path !== '/') {
             const folderNote = folder.children.find((child): child is TFile =>
                 child instanceof TFile && this.isFolderNote(child, folder));
             if (folderNote) {
@@ -1783,7 +1793,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             for (const child of sorted) {
                 if (child instanceof TFolder) {
                     this.buildFolderTree(child, childrenContainer, 'folder');
-                }   if (child instanceof TFile) {
+                }   else if (child instanceof TFile) {
                     const isFolderNoteFile = this.isFolderNote(child, folder);
                     if (isFolderNoteFile && this.plugin.settings.enableFolderNotes) {
                         if (!this.plugin.settings.showFolderNotesInTree) continue;
