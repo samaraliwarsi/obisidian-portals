@@ -5037,6 +5037,7 @@ justify-content: flex-start !important;
     flex: 1;
     min-height: 0;
     overflow: auto;
+    padding-left: 6px;
 }
 
 /* Splitter */
