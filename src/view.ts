@@ -129,6 +129,7 @@ export class PortalsView extends ItemView {
 
         //---FolderNotes 
         const refreshFolderNotes = () => {
+            if (!this.plugin.settings.enableFolderNotes) return;
             if (this.plugin.settings.activeSplitTab === 'folder-notes') {
                 const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
                 if (secondaryPanel) {
@@ -143,9 +144,45 @@ export class PortalsView extends ItemView {
         const folderNoteRenameRef = this.app.vault.on('rename', refreshFolderNotes);
         const folderNoteDeleteRef = this.app.vault.on('delete', refreshFolderNotes);
         const folderNoteCreateRef = this.app.vault.on('create', refreshFolderNotes);
-        const folderNoteModifyRef = this.app.vault.on('modify', refreshFolderNotes);
-        (this as any).folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef, folderNoteModifyRef];
+        (this as any).folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef];
 
+        const folderNoteModifyRef = this.app.vault.on('modify', (file) => {
+            if (!this.plugin.settings.enableFolderNotes) return;
+            // Only proceed if folder notes tab is active
+            if (this.plugin.settings.activeSplitTab !== 'folder-notes') return;
+
+            const selectedSpace = this.plugin.settings.selectedSpace;
+            if (!selectedSpace || selectedSpace.type !== 'folder') return;
+
+            // Determine the current folder note path
+            let currentNotePath: string | null = null;
+
+            if (selectedSpace.path === '/') {
+                // Root folder note
+                const vaultName = this.app.vault.getName();
+                currentNotePath = vaultName + '.md';
+            } else {
+                // Non‑root folder: find its folder note
+                const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+                if (!(folder instanceof TFolder)) return;
+                const folderNote = folder.children.find((child): child is TFile =>
+                    child instanceof TFile && this.isFolderNote(child, folder)
+                );
+                currentNotePath = folderNote?.path ?? null;
+            }
+
+            // If the modified file is the current folder note, refresh the tab
+            if (file.path === currentNotePath) {
+                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                if (secondaryPanel) {
+                    const contentEl = secondaryPanel.querySelector('.portals-split-content');
+                    if (contentEl) {
+                        (contentEl as HTMLElement).empty();
+                        this.renderFolderNotesTab(contentEl as HTMLElement);
+                    }
+                }
+            }
+        });
 
         // Global drag listeners
         document.addEventListener('mousemove', this.handleDragMove);
