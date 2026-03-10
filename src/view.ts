@@ -804,6 +804,8 @@ export class PortalsView extends ItemView {
 
         } else if (tabId === 'folder-notes') {
             this.renderFolderNotesTab(contentEl)
+        } else if (tabId === 'bookmarks') {
+            this.renderBookmarksTab(contentEl);
         }
     }
 
