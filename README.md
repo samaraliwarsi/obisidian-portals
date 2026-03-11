@@ -23,7 +23,7 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 - **Mobile friendly** – Responsive design that works on small screens. Tested on Android (more platforms coming).
 - **Export/Import settings** – Backup your tab configuration or transfer it to another vault.
 >[!TIP]
-> If you'd like a starting point for your folder notes, you can find a [Sample_FolderNote](templates/Sample_FolderNote.md) and a [Guide](templates/Portals%20Folder-Notes%20Guide.md) in the [templates](templates) folder. Just copy it to your vault and rename it as needed.
+> If you'd like a starting point for your folder notes, you can find a [Sample_FolderNote](templates/Sample_FolderNote.md) and a [Guide](templates/Portals_FolderNote_Guide.md) in the [templates](templates) folder. Just copy it to your vault and rename it as needed.
 
 ## ⚙️ Installation
 ### Using BRAT (Beta Reviewers Auto-update Tester)
