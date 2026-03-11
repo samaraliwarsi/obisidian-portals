@@ -369,7 +369,18 @@ export class PortalsView extends ItemView {
 
     //-- FolderNote
     private isFolderNote(file: TFile, folder: TFolder): boolean {
+        if (folder.path === '/') {
+            return file.extension === 'md' && file.name.toLowerCase() === (this.app.vault.getName() + '.md').toLowerCase() && file.parent?.path === '/';
+        } else {
         return file.extension === 'md' && file.name.toLowerCase() === (folder.name + '.md').toLowerCase() && file.parent?.path === folder.path;
+        }
+    }
+
+    //-- FolderNote Dot
+    private hasFolderNote(folder: TFolder): boolean {
+        return folder.children.some(child => 
+            child instanceof TFile && this.isFolderNote(child, folder)
+        );
     }
 
     //-- Settings Hash
@@ -1797,6 +1808,10 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const nameSpan = summary.createSpan({ text: displayName });
         nameSpan.addClass('portals-item-name');
         summary.dataset.path = folder.path;
+
+        if (this.hasFolderNote(folder)) {
+            summary.createSpan({ cls: 'folder-note-dot '});
+        }
 
         const activePath = this.getActiveFilePath();
         if (activePath) {

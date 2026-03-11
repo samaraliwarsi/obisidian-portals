@@ -5329,7 +5329,7 @@ justify-content: flex-start !important;
   }
 }
 
-/*===FOLDER NOTE , Bases Styling & User message Display===*/
+/*===FOLDER NOTE, Bases Styling, Folder Note Dot & User message Display===*/
 .portals-embed-link {
     display: inline-block;
     margin: 4px 0;
@@ -5354,6 +5354,16 @@ justify-content: flex-start !important;
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
+}
+
+.folder-note-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+    margin-left: 4px;
+    vertical-align: middle;
 }
 
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */
