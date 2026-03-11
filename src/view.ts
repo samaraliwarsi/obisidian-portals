@@ -383,6 +383,13 @@ export class PortalsView extends ItemView {
         );
     }
 
+    //--getFolderNote
+    private getFolderNote(folder: TFolder): TFile | undefined {
+        return folder.children.find((child): child is TFile => 
+            child instanceof TFile && this.isFolderNote(child, folder)
+        );
+    }
+
     //-- Settings Hash
     private getSettingsHash(): string {
         const s = this.plugin.settings;
@@ -1830,11 +1837,25 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
         this.makeDropTarget(summary, folder, true);
 
+        summary.addEventListener('click', (e) => {
+            if (e.metaKey || e.ctrlKey) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const folderNote = this.getFolderNote(folder);
+                if (folderNote) {
+                    this.app.workspace.getLeaf('tab').openFile(folderNote);
+                }
+            }
+        });
+
+
         summary.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             this.showFolderContextMenu(e, folder, summary);
         });
 
+        
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
 
         const loadChildren = () => {
