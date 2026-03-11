@@ -16,12 +16,15 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 - **Floating action buttons** – Quick‑create notes, folders, collapse all subfolders, and change sort order.
 - **Native sorting** – Choose how files are sorted (by name, creation time, or modification time, ascending/descending). Your choice is saved between sessions.
 - **Side Portal** - A modular, collapsable, resizable pane for new views and more ways to access content. Toggle it on in settings to find options inside. **Side Portal** has tabs containing,  **Bookmarks**, **Recent Files** and **Folder Notes**. To use **Side Portal,** at least one tab is required to be on in settings. 
-- **Folder Notes** – Each folder can have an associated note (markdown file with the same name). The note can be displayed in a side panel, and folders with a note are marked with a small dot. Global toggle to enable/disable folder notes. **Folder notes** can be used without side portal as well.
+- **Folder Notes** – Each folder can have an associated note (markdown file with the same name). The note can be displayed in a side panel, and folders with a note are marked with a small dot. Global toggle to enable/disable folder notes. Folders with **Folder Notes** are highlighted with a grey dot. **Folder notes** can be used without side portal as well.
 - **Recents** - Live update recent files list from across the vault. 
 - **Bookmarks** - Bookmark your favourite files or web links from Obsidian web viewer.
 - **Safe deletion** – Files are moved to Obsidian’s `.trash` folder – no permanent deletion without confirmation. Works well with Trash Explorer Plugin.
 - **Mobile friendly** – Responsive design that works on small screens. Tested on Android (more platforms coming).
 - **Export/Import settings** – Backup your tab configuration or transfer it to another vault.
+>[!TIP]
+> If you'd like a starting point for your folder notes, you can find a [Sample_FolderNote](templates/Sample_FolderNote.md) and a [Guide](templates/Portals%20Folder-Notes%20Guide.md) in the [templates](templates) folder. Just copy it to your vault and rename it as needed.
+
 ## ⚙️ Installation
 ### Using BRAT (Beta Reviewers Auto-update Tester)
 
