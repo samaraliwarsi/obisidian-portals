@@ -1,14 +1,15 @@
-import * as phosphorCore from '@phosphor-icons/core';
+import { icons } from '@phosphor-icons/core';
 
-const iconsArray = (phosphorCore as any).icons;
+let iconNames: string[] = [];
 
-if (!iconsArray) {
-    console.error('Could not load Phosphor icon names');
+try {
+    if (icons && Array.isArray(icons)) {
+        iconNames = icons.map(icon => icon.name).sort();
+    } else {
+        console.error('Portals: @phosphor-icons/core icons array not found');
+    }
+} catch (e) {
+    console.error('Portals: Failed to load Phosphor icon names', e);
 }
 
-export const iconNames: string[] = Object.values(iconsArray || {})
-    .map((icon: any) => icon.name)
-    .filter(Boolean)
-    .sort();
-
-console.log(`Loaded ${iconNames.length} Phosphor icon names.`);
+export { iconNames };

@@ -25,7 +25,7 @@ export default class PortalsPlugin extends Plugin {
             (leaf) => new PortalsView(leaf, this)
         );
 
-        this.addRibbonIcon('folder-tree', 'Open Portals', () => {
+        this.addRibbonIcon('folder-tree', 'Open portals', () => {
             this.activateView();
         });
 
@@ -40,28 +40,28 @@ export default class PortalsPlugin extends Plugin {
         }
 
         // Track recent files
-        this.registerEvent(this.app.workspace.on('file-open', async (file) => {
+        this.registerEvent(this.app.workspace.on('file-open', (file) => {
             if (file) {
-                await this.updateRecentFiles(file.path);
+                void this.updateRecentFiles(file.path);
             }
         }));
 
         // Track file rename
-        this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
             if (file instanceof TFile) {
-                await this.updateRecentFilesOnRename(oldPath, file.path);
+                void this.updateRecentFilesOnRename(oldPath, file.path);
             }
         }));
 
         // Track file delete
-        this.registerEvent(this.app.vault.on('delete', async (file) => {
+        this.registerEvent(this.app.vault.on('delete', (file) => {
             if (file instanceof TFile) {
-                await this.removeRecentFile(file.path);
+                void this.removeRecentFile(file.path);
             }
         }));
     }
 
-    async onunload() { }
+    onunload() { }
 
         async loadSettings() {
         const data = await this.loadData();
@@ -182,8 +182,7 @@ export default class PortalsPlugin extends Plugin {
         const existingFolders = allFiles.filter(f => f instanceof TFolder).map(f => f.path);
 
         // Get all existing tags (as strings with '#')
-        const tags = Object.keys((this.app.metadataCache as any).getTags()); // e.g. ['#tag1', '#tag2']
-
+        const tags = Object.keys((this.app.metadataCache as unknown as { getTags(): Record<string, number> }).getTags());
         // Filter spaces
         const beforeCount = this.settings.spaces.length;
         this.settings.spaces = this.settings.spaces.filter(space => {

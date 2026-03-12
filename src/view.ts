@@ -67,6 +67,8 @@ export class PortalsView extends ItemView {
     private currentSecondaryPanel: HTMLElement | null = null;
     private currentSplitter: HTMLElement | null = null;
     private sortableInstance: Sortable | null = null;
+    private folderNoteEventRefs: Array<unknown> | null = null;
+    private bookmarksListenerRef: unknown | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -86,7 +88,7 @@ export class PortalsView extends ItemView {
     }
 
     async onOpen() {
-        this.render();
+        await this.render();
 
         const renameRef = this.app.vault.on('rename', () => this.renderContent());
         const deleteRef = this.app.vault.on('delete', () => this.renderContent());
@@ -108,6 +110,7 @@ export class PortalsView extends ItemView {
 
         // Set up bookmarks change listener (using internal plugin for now)
         const setupBookmarksListener = () => {
+            //--@ts-expect-error - accessing internal plugin API
             const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
             if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.on === 'function') {
                 const ref = bookmarksPlugin.instance.on('changed', () => {
@@ -121,6 +124,7 @@ export class PortalsView extends ItemView {
                     }
                 });
                 // Store ref for cleanup
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (this as any).bookmarksListenerRef = ref;
             }
         };
@@ -144,7 +148,7 @@ export class PortalsView extends ItemView {
         const folderNoteRenameRef = this.app.vault.on('rename', refreshFolderNotes);
         const folderNoteDeleteRef = this.app.vault.on('delete', refreshFolderNotes);
         const folderNoteCreateRef = this.app.vault.on('create', refreshFolderNotes);
-        (this as any).folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef];
+        this.folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef];
 
         // Global drag listeners
         document.addEventListener('mousemove', this.handleDragMove);
@@ -168,19 +172,20 @@ export class PortalsView extends ItemView {
         }
         
         //--clean up foldernotes listeners
-        if ((this as any).folderNoteEventRefs) {
-            (this as any).folderNoteEventRefs.forEach((ref:any) => this.app.vault.offref(ref));
-            (this as any).folderNoteEventRefs = null;
+        if (this.folderNoteEventRefs) {
+            this.folderNoteEventRefs.forEach((ref:any) => this.app.vault.offref(ref));
+            this.folderNoteEventRefs = null;
         }
 
         // Clean up bookmarks listener
-        const ref = (this as any).bookmarksListenerRef;
+        const ref = this.bookmarksListenerRef;
         if (ref) {
+            //--@ts-expect-error - accessing internal plugin API
             const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
             if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
                 bookmarksPlugin.instance.off('changed', ref);
             }
-            (this as any).bookmarksListenerRef = null;
+            this.bookmarksListenerRef = null;
         }
 
         document.removeEventListener('mousemove', this.handleDragMove);
@@ -279,7 +284,7 @@ export class PortalsView extends ItemView {
         this.plugin.settings.secondaryPanelCollapsed = false;
         this.currentSecondaryPanel.classList.remove('is-collapsed');
         const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
-        if (collapseIcon) collapseIcon.innerHTML = '▼';
+        if (collapseIcon) collapseIcon.textContent = '▼';
         this.plugin.saveData(this.plugin.settings);
     };
 
@@ -301,7 +306,7 @@ export class PortalsView extends ItemView {
                     if (splitContent) splitContent.style.display = 'none';
                     if (this.currentSplitter) this.currentSplitter.style.display = 'none';
                     const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
-                    if (collapseIcon) collapseIcon.innerHTML = '▲';
+                    if (collapseIcon) collapseIcon.textContent = '▲';
                     this.plugin.saveData(this.plugin.settings);
                 }
             }
@@ -321,7 +326,7 @@ export class PortalsView extends ItemView {
                 if (splitContent) splitContent.style.display = 'block';
                 if (this.currentSplitter) this.currentSplitter.style.display = 'block';
                 const collapseIcon = secondaryPanel.querySelector('.portals-collapse-icon');
-                if (collapseIcon) collapseIcon.innerHTML = '▼';
+                if (collapseIcon) collapseIcon.textContent = '▼';
                 // Remove the collapsed class so CSS can apply the correct border
                 secondaryPanel.classList.remove('is-collapsed');
             }
@@ -375,7 +380,7 @@ export class PortalsView extends ItemView {
         });
     }
 
-    async render() {
+    render() {
         const newHash = this.getSettingsHash();
         if (newHash === this.lastRenderHash) return;
         this.lastRenderHash = newHash;
@@ -385,10 +390,6 @@ export class PortalsView extends ItemView {
             if (!container) return;
             container.empty();
             container.addClass('portals-container');
-            container.style.position = 'relative';
-            container.style.display = 'flex';
-            container.style.flexDirection = 'column';
-            container.style.height = '100%';
 
             const spaces = this.plugin.settings.spaces;
 
@@ -470,7 +471,7 @@ export class PortalsView extends ItemView {
                     iconSpan.createEl('i', { cls: `ph ph-${space.icon}` });
                 }
 
-                tab.addEventListener('click', async () => {
+                tab.addEventListener('click', () => {
                     this.hideTooltip(0);
                     this.plugin.settings.selectedSpace = {
                         path: space.path,
@@ -481,52 +482,55 @@ export class PortalsView extends ItemView {
                         this.plugin.settings.openFolders.push(space.path);
                     }
 
-                    await this.plugin.saveSettings();
-                    await this.render();
-                    const newActiveTab = container.querySelector('.portals-tab.is-active');
-                    if (newActiveTab) {
-                        setTimeout(() => {
-                            newActiveTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                        }, 0);
-                    }
+                    this.plugin.saveSettings()
+                        .then(() => this.render())
+                        .then(() => {
+                            const newActiveTab = container.querySelector('.portals-tab.is-active');
+                            if (newActiveTab) {
+                                setTimeout(() => {
+                                    newActiveTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                }, 0);
+                            }
+                        });
                 });
             }
 
            this.sortableInstance = new Sortable(tabBar, {
-                animation: 150,
-                delay: 400,
-                delayOnTouchOnly: true,
-                touchStartThreshold: 5,
-                scrollSensitivity: 30,
-                onEnd: async (evt: SortableEvent) => {
-                    const newOrder: SpaceConfig[] = [];
-                    const tabElements = tabBar.querySelectorAll('.portals-tab');
-                    tabElements.forEach(el => {
-                        const path = (el as HTMLElement).dataset.path;
-                        const type = (el as HTMLElement).dataset.type;
-                        if (path && (type === 'folder' || type === 'tag')) {
-                            const found = this.plugin.settings.spaces.find(s => s.path === path && s.type === type);
-                            if (found) {
-                                newOrder.push(found);
-                            }
-                        }
-                    });
-
-                    if (this.plugin.settings.pinVaultRoot) {
-                        const rootIndex = newOrder.findIndex(s => s.path === '/' && s.type === 'folder');
-                        if (rootIndex > 0) {
-                            const root = newOrder.splice(rootIndex, 1)[0];
-                            if (root) {
-                                newOrder.unshift(root);
-                            }
+            animation: 150,
+            delay: 400,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 5,
+            scrollSensitivity: 30,
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            onEnd: async (evt: SortableEvent) => {
+                const newOrder: SpaceConfig[] = [];
+                const tabElements = tabBar.querySelectorAll('.portals-tab');
+                tabElements.forEach(el => {
+                    const path = (el as HTMLElement).dataset.path;
+                    const type = (el as HTMLElement).dataset.type;
+                    if (path && (type === 'folder' || type === 'tag')) {
+                        const found = this.plugin.settings.spaces.find(s => s.path === path && s.type === type);
+                        if (found) {
+                            newOrder.push(found);
                         }
                     }
+                });
 
-                    this.plugin.settings.spaces = newOrder;
-                    await this.plugin.saveData(this.plugin.settings);
-                    this.lastRenderHash = this.getSettingsHash();
+                if (this.plugin.settings.pinVaultRoot) {
+                    const rootIndex = newOrder.findIndex(s => s.path === '/' && s.type === 'folder');
+                    if (rootIndex > 0) {
+                        const root = newOrder.splice(rootIndex, 1)[0];
+                        if (root) {
+                            newOrder.unshift(root);
+                        }
+                    }
                 }
-            });
+
+                this.plugin.settings.spaces = newOrder;
+                await this.plugin.saveData(this.plugin.settings);
+                this.lastRenderHash = this.getSettingsHash();
+            }
+        });
 
             setTimeout(() => {
                 const activeTab = tabBar.querySelector('.portals-tab.is-active');
@@ -575,14 +579,16 @@ export class PortalsView extends ItemView {
                 const tabBtn = tabContainer.createEl('div', { cls: 'portals-split-tab' });
                 tabBtn.dataset.tabId = tabId;
 
-                const iconName = icons[tabId] || 'file';
-                tabBtn.innerHTML = `<i class="ph ph-${iconName}"></i>`;
+                // Add icon
+                tabBtn.createEl('i', { cls: `ph ph-${icons[tabId] || 'file'}` });
+
+                // Add label if active or setting enabled
                 if (tabId === activeTab || this.plugin.settings.showInactiveTabNames) {
-                    const span = document.createElement('span');
+                    const span = tabBtn.createEl('span');
                     span.textContent = tabId.charAt(0).toUpperCase() + tabId.slice(1).replace('-', ' ');
-                    tabBtn.appendChild(span);
                 }
 
+                // Set initial active state
                 if (tabId === activeTab) {
                     tabBtn.addClass('is-active');
                     if (rootColor) {
@@ -595,32 +601,31 @@ export class PortalsView extends ItemView {
                     this.plugin.settings.activeSplitTab = tabId;
                     this.plugin.saveData(this.plugin.settings);
 
+                    // Update active state on all split tabs without rebuilding them
                     tabContainer.querySelectorAll('.portals-split-tab').forEach(t => {
-                        const tabElements = t as HTMLElement;
-                        const tId = tabElements.dataset.tabId;
-                        if (!tId) return;
-                        const icon = icons[tId] || 'file';
-                        tabElements.empty();
-                        tabElements.innerHTML = `<i class="ph ph-${icon}"></i>`;
-                        if (tId === tabId || this.plugin.settings.showInactiveTabNames) {
-                            const span = document.createElement('span');
-                            span.textContent = tId.charAt(0).toUpperCase() + tId.slice(1).replace('-', ' ');
-                            tabElements.appendChild(span);
-                        }
-                        tabElements.style.borderBottomColor = '';
-                        tabElements.removeClass('is-active');
+                        const currentTab = t as HTMLElement;
+                        const currentId = currentTab.dataset.tabId;
+                        if (!currentId) return;
+                        
+                        // Remove active class from all tabs
+                        currentTab.removeClass('is-active');
+                        currentTab.style.borderBottomColor = '';
                     });
+
+                    // Add active class to clicked tab
                     tabBtn.addClass('is-active');
                     if (rootColor) {
                         tabBtn.style.borderBottomColor = rootColor;
                     }
+
+                    // Render new content
                     this.renderSplitTabContent(secondaryPanel, tabId);
                 });
             });
 
             // Collapse icon
             const collapseIcon = secondaryHeader.createSpan({ cls: 'portals-collapse-icon' });
-            collapseIcon.innerHTML = this.plugin.settings.secondaryPanelCollapsed ? '▲' : '▼';  
+            collapseIcon.textContent = this.plugin.settings.secondaryPanelCollapsed ? '▲' : '▼';  
 
             // Content area (collapsible)
             const splitContent = secondaryPanel.createDiv({ cls: 'portals-split-content' });
@@ -654,13 +659,13 @@ export class PortalsView extends ItemView {
                     secondaryPanel.style.height = '42px';
                     splitContent.style.display = 'none';
                     splitter.style.display = 'none';
-                    collapseIcon.innerHTML = '▲';
+                    collapseIcon.textContent = '▲';
                     secondaryPanel.classList.add('is-collapsed');
                 } else {
                     secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
                     splitContent.style.display = 'block';
                     splitter.style.display = 'block';
-                    collapseIcon.innerHTML = '▼';
+                    collapseIcon.textContent = '▼';
                     secondaryPanel.classList.remove('is-collapsed');
                 }
                 this.plugin.saveData(this.plugin.settings);
@@ -701,7 +706,8 @@ export class PortalsView extends ItemView {
             const createFloatingButton = (icon: string, tooltip: string, bottom: number, onClick: (e: MouseEvent) => void) => {
                 const btn = mainPanel.createEl('button', { cls: 'portals-floating-btn' });
                 btn.style.bottom = bottom + 'px';
-                btn.innerHTML = `<i class="ph ph-${icon}"></i>`;
+                btn.empty();
+                btn.createEl('i', { cls: `ph ph-${icon}` });
                 if (!Platform.isMobile) {
                     btn.addEventListener('mouseenter', () => this.showTooltip(tooltip, btn));
                     btn.addEventListener('mouseleave', () => this.hideTooltip(100));
@@ -710,38 +716,42 @@ export class PortalsView extends ItemView {
                 return btn;
             };
 
-            createFloatingButton('file-plus', 'New note', 136, async () => {
-                const currentSpace = this.plugin.settings.spaces.find(s => 
-                    s.path === this.plugin.settings.selectedSpace?.path && 
-                    s.type === this.plugin.settings.selectedSpace?.type
-                );
-                if (!currentSpace || currentSpace.type !== 'folder') {
-                    new Notice('Please select a folder space first.');
-                    return;
-                }
-                const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
-                if (!(folder instanceof TFolder)) {
-                    new Notice('Selected space is not a valid folder.');
-                    return;
-                }
-                await this.newNoteInFolder(folder);
+            createFloatingButton('file-plus', 'New note', 136, () => {
+                (async () => {
+                    const currentSpace = this.plugin.settings.spaces.find(s => 
+                        s.path === this.plugin.settings.selectedSpace?.path && 
+                        s.type === this.plugin.settings.selectedSpace?.type
+                    );
+                    if (!currentSpace || currentSpace.type !== 'folder') {
+                        new Notice('Please select a folder space first.');
+                        return;
+                    }
+                    const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                    if (!(folder instanceof TFolder)) {
+                        new Notice('Selected space is not a valid folder.');
+                        return;
+                    }
+                    await this.newNoteInFolder(folder);
+                })().catch(err => console.error('Error creating note:', err));
             });
 
-            createFloatingButton('folder-simple-plus', 'New folder', 94, async () => {
-                const currentSpace = this.plugin.settings.spaces.find(s => 
-                    s.path === this.plugin.settings.selectedSpace?.path && 
-                    s.type === this.plugin.settings.selectedSpace?.type
-                );
-                if (!currentSpace || currentSpace.type !== 'folder') {
-                    new Notice('Please select a folder space first.');
-                    return;
-                }
-                const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
-                if (!(folder instanceof TFolder)) {
-                    new Notice('Selected space is not a valid folder.');
-                    return;
-                }
-                await this.newFolderInFolder(folder);
+            createFloatingButton('folder-simple-plus', 'New folder', 94, () => {
+                (async () => {
+                    const currentSpace = this.plugin.settings.spaces.find(s => 
+                        s.path === this.plugin.settings.selectedSpace?.path && 
+                        s.type === this.plugin.settings.selectedSpace?.type
+                    );
+                    if (!currentSpace || currentSpace.type !== 'folder') {
+                        new Notice('Please select a folder space first.');
+                        return;
+                    }
+                    const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                    if (!(folder instanceof TFolder)) {
+                        new Notice('Selected space is not a valid folder.');
+                        return;
+                    }
+                    await this.newFolderInFolder(folder);
+                })().catch(err => console.error('Error creating folder:', err));
             });
 
             createFloatingButton('caret-circle-up-down', 'Sort', 52, (e: MouseEvent) => {
@@ -781,12 +791,14 @@ export class PortalsView extends ItemView {
                 menu.showAtPosition({ x: e.clientX, y: e.clientY });
             });
 
-            createFloatingButton('stack', 'Collapse all', 10, async () => {
-                const currentSpace = this.plugin.settings.selectedSpace;
-                if (!currentSpace) return;
-                this.plugin.settings.openFolders = [currentSpace.path];
-                await this.plugin.saveData(this.plugin.settings);
-                this.renderContent();
+            createFloatingButton('stack', 'Collapse all', 10, () => {
+                (async () => {
+                    const currentSpace = this.plugin.settings.selectedSpace;
+                    if (!currentSpace) return;
+                    this.plugin.settings.openFolders = [currentSpace.path];
+                    await this.plugin.saveData(this.plugin.settings);
+                    this.renderContent();
+                })().catch(err => console.error('Error collapsing folders:', err));
             });
 
         } catch (e) {
@@ -842,7 +854,9 @@ export class PortalsView extends ItemView {
 
     private renderBookmarksTab(contentEl: HTMLElement) {
     // Try public API first (future-proofing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const publicBookmarks = (this.app as any).bookmarks;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let items: any[] = [];
     let usePublic = false;
 
@@ -859,9 +873,10 @@ export class PortalsView extends ItemView {
 
     // Fallback to internal plugin if public API not available or returned nothing
     if (!usePublic || items.length === 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
         if (!bookmarksPlugin?.enabled || !bookmarksPlugin.instance) {
-            contentEl.createEl('p', { text: 'The Bookmarks core plugin is not enabled. Settings → Core plugins.' });
+            contentEl.createEl('p', { text: 'The bookmarks core plugin is not enabled. Settings → core plugins.' });
             return;
         }
         items = bookmarksPlugin.instance.items;
@@ -885,6 +900,7 @@ export class PortalsView extends ItemView {
     };
 
     // Recursive render function
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const renderItem = (item: any, container: HTMLElement) => {
         if (item.children && Array.isArray(item.children) && item.children.length > 0) {
             // Folder/group
@@ -904,9 +920,7 @@ export class PortalsView extends ItemView {
                     .setTitle('Delete group')
                     .setIcon('trash')
                     .onClick(() => {
-                        if (confirm(`Delete bookmark group "${item.title || 'Group'}"?`)) {
-                            this.deleteBookmarkItem(item, usePublic, refresh);
-                        }
+                        this.deleteBookmarkItem(item, usePublic, refresh);
                     })
                 );
                 menu.showAtPosition({ x: e.clientX, y: e.clientY });
@@ -963,9 +977,7 @@ export class PortalsView extends ItemView {
                     .setTitle('Delete bookmark')
                     .setIcon('trash')
                     .onClick(() => {
-                        if (confirm(`Delete bookmark "${displayName}"?`)) {
-                            this.deleteBookmarkItem(item, usePublic, refresh);
-                        }
+                        this.deleteBookmarkItem(item, usePublic, refresh);
                     })
                 );
                 menu.showAtPosition({ x: e.clientX, y: e.clientY });
@@ -977,13 +989,16 @@ export class PortalsView extends ItemView {
 }
 
 // Helper method to delete a bookmark item (add this to your class)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
     if (usePublic) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const publicBookmarks = (this.app as any).bookmarks;
         if (publicBookmarks?.remove && item.id) {
             publicBookmarks.remove(item.id);
         }
     } else {
+        //--@ts-expect-error - accessing internal plugin API
         const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
         if (!bookmarksPlugin?.instance) return;
         // Try different deletion methods
@@ -1104,7 +1119,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             try {
                 const component = new Component();
                 this.addChild(component);
-                await MarkdownRenderer.renderMarkdown(content, noteContainer, file.path, component);
+                await MarkdownRenderer.render(this.app, content, noteContainer, file.path, component);
                 await this.processEmbeds(noteContainer, component, file.path);
             } catch (e) {
                 console.error('Error rendering folder note:', e);
@@ -1145,7 +1160,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                 const content = await this.app.vault.read(targetFile);
                 const childComponent = new Component();
                 component.addChild(childComponent);
-                await MarkdownRenderer.renderMarkdown(content, targetContainer, targetFile.path, childComponent);
+                await MarkdownRenderer.render(this.app, content, targetContainer, targetFile.path, childComponent);
                 await this.processEmbeds(targetContainer, childComponent, targetFile.path, depth + 1);
                 embed.replaceWith(targetContainer);
                 continue;
@@ -1166,7 +1181,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
     //--End of process embed, start of renderContent
 
 
-    async renderContent() {
+    renderContent() {
         const container = this.containerEl.children[1] as HTMLElement;
         const treeContainer = container.querySelector('.portals-tree-container');
         if (!treeContainer) return;
@@ -1343,6 +1358,11 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         menu.addSeparator();
 
         menu.addItem(item => item
+            .setTitle('Delete')
+            .setIcon('trash')
+            .onClick(() => this.deleteFile(file)));
+
+        menu.addItem(item => item
             .setTitle('Duplicate')
             .setIcon('copy')
             .onClick(() => this.duplicateFile(file)));
@@ -1351,11 +1371,6 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             .setTitle('Rename')
             .setIcon('pencil')
             .onClick(() => this.startRenameFile(file, fileEl)));
-
-        menu.addItem(item => item
-            .setTitle('Delete')
-            .setIcon('trash')
-            .onClick(() => this.deleteFile(file)));
 
         menu.addSeparator();
 
@@ -1424,10 +1439,12 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
     private executeCommand(commandId: string) {
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (this.app as any).commands.executeCommandById(commandId);
         } catch (err) {
+            const message = err instanceof Error ? err.message: String(err);
             console.error(`Command failed: ${commandId}`, err);
-            new Notice(`Command failed: ${err}`);
+            new Notice(`Command failed: ${message}`);
         }
     }
 
@@ -1435,18 +1452,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const input = document.createElement('input');
         input.type = 'text';
         input.value = initialValue;
-        input.style.flex = '1';
-        input.style.minWidth = '0';
-        input.style.padding = '2px 4px';
-        input.style.font = 'inherit';
-        input.style.color = 'inherit';
-        input.style.background = 'var(--background-primary)';
-        input.style.border = '1px solid var(--interactive-accent)';
-        input.style.borderRadius = '4px';
-        input.style.boxShadow = 'none';
-        input.style.outline = 'none';
-        input.style.margin = '0';
-        input.style.boxSizing = 'border-box';
+        input.addClass('portals-rename-input');
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -1467,29 +1473,28 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const isMd = file.extension === 'md';
         const base = isMd ? file.basename : file.name;
 
-        const input = this.createRenameInput(base, async (newBase) => {
-            if (!newBase || newBase === base) return;
-            const newName = isMd ? newBase + '.' + file.extension : newBase;
-            const newPath = file.parent ? `${file.parent.path}/${newName}` : newName;
-            try {
-                await this.app.vault.rename(file, newPath);
-                new Notice('File renamed');
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Rename failed: ${message}`);
-            } finally {
-                this.renaming = false;
-                document.removeEventListener('mousedown', outsideClickListener);
-                this.renderContent();
-            }
+        const input = this.createRenameInput(base, (newBase) => {
+            (async () => {
+                if (!newBase || newBase === base) return;
+                const newName = isMd ? newBase + '.' + file.extension : newBase;
+                const newPath = file.parent ? `${file.parent.path}/${newName}` : newName;
+                try {
+                    await this.app.vault.rename(file, newPath);
+                    new Notice('File renamed');
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    new Notice(`Rename failed: ${message}`);
+                } finally {
+                    this.renaming = false;
+                    document.removeEventListener('mousedown', outsideClickListener);
+                    this.renderContent();
+                }
+            })().catch(err => console.error('Rename error:', err));
         }, () => {
             this.renaming = false;
             document.removeEventListener('mousedown', outsideClickListener);
             this.renderContent();
         });
-
-        input.style.flex = '1';
-        input.style.minWidth = '0';
 
         nameSpan.replaceWith(input);
         input.focus();
@@ -1510,29 +1515,28 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const nameSpan = summaryEl.querySelector('.portals-item-name') as HTMLElement;
         if (!nameSpan) return;
 
-        const input = this.createRenameInput(folder.name, async (newName) => {
-            if (!newName || newName === folder.name) return;
-            const parent = folder.parent?.path || '';
-            const newPath = parent ? `${parent}/${newName}` : newName;
-            try {
-                await this.app.vault.rename(folder, newPath);
-                new Notice('Folder renamed');
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Rename failed: ${message}`);
-            } finally {
-                this.renaming = false;
-                document.removeEventListener('mousedown', outsideClickListener);
-                this.renderContent();
-            }
+        const input = this.createRenameInput(folder.name, (newName) => {
+            (async () => {
+                if (!newName || newName === folder.name) return;
+                const parent = folder.parent?.path || '';
+                const newPath = parent ? `${parent}/${newName}` : newName;
+                try {
+                    await this.app.vault.rename(folder, newPath);
+                    new Notice('Folder renamed');
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    new Notice(`Rename failed: ${message}`);
+                } finally {
+                    this.renaming = false;
+                    document.removeEventListener('mousedown', outsideClickListener);
+                    this.renderContent();
+                }
+            })().catch(err => console.error('Rename error:', err));
         }, () => {
             this.renaming = false;
             document.removeEventListener('mousedown', outsideClickListener);
             this.renderContent();
         });
-
-        input.style.flex = '1';
-        input.style.minWidth = '0';
 
         nameSpan.replaceWith(input);
         input.focus();
@@ -1560,7 +1564,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         }, 100);
     }
 
-    private async triggerRenameOnPath(path: string) {
+    private triggerRenameOnPath(path: string) {
         this.scrollToAndHighlight(path);
         setTimeout(() => {
             const item = this.containerEl.querySelector(`[data-path="${path}"]`);
@@ -1581,6 +1585,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             const leaves = this.app.workspace.getLeavesOfType(type);
             const found = leaves.some(leaf => {
                 const view = leaf.view;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return view && (view as any).file && (view as any).file.path === file.path;
             });
             if (found) return true;
@@ -1620,30 +1625,27 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
     }
 
     private async deleteFile(file: TFile) {
-        const confirmMsg = `Delete "${file.name}"?`;
-        if (!confirm(confirmMsg)) return;
         try {
             await this.app.vault.trash(file, false);
-            new Notice('File moved to trash');
+            new Notice(`File "${file.name}" moved to trash`, 2000); // auto-hide after 2s
             this.renderContent();
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Delete failed: ${message}`);
+            new Notice(`Delete failed: ${message}`, 3000);
         }
     }
 
     private async deleteFolder(folder: TFolder) {
-        const confirmMsg = `Delete folder "${folder.name}" and all its contents?`;
-        if (!confirm(confirmMsg)) return;
         try {
             await this.app.vault.trash(folder, false);
-            new Notice('Folder moved to trash');
+            new Notice(`Folder "${folder.name}" moved to trash`, 2000);
             this.renderContent();
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Delete failed: ${message}`);
+            new Notice(`Delete failed: ${message}`, 3000);
         }
     }
+
 
     private async newNoteInFolder(folder: TFolder) {
         const defaultName = 'Untitled.md';
@@ -1723,39 +1725,41 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         el.addEventListener('dragleave', () => {
             el.removeClass('drag-over');
         });
-        el.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            el.removeClass('drag-over');
-            const filePath = e.dataTransfer?.getData('text/plain');
-            if (!filePath) return;
-            const file = this.app.vault.getAbstractFileByPath(filePath);
-            if (!file) return;
+        el.addEventListener('drop', (e) => {
+            (async () => {
+                e.preventDefault();
+                e.stopPropagation();
+                el.removeClass('drag-over');
+                const filePath = e.dataTransfer?.getData('text/plain');
+                if (!filePath) return;
+                const file = this.app.vault.getAbstractFileByPath(filePath);
+                if (!file) return;
 
-            const targetPath = `${folder.path}/${file.name}`;
-            if (targetPath === file.path) return;
+                const targetPath = `${folder.path}/${file.name}`;
+                if (targetPath === file.path) return;
 
-            try {
-                if (file instanceof TFile) {
-                    await this.app.vault.rename(file, targetPath);
-                    new Notice(`Moved to ${folder.name}`);
-                } else if (allowFolders && file instanceof TFolder) {
-                    if (targetPath.startsWith(file.path + '/') || targetPath === file.path) {
-                        new Notice('Cannot move folder into itself');
+                try {
+                    if (file instanceof TFile) {
+                        await this.app.vault.rename(file, targetPath);
+                        new Notice(`Moved to ${folder.name}`);
+                    } else if (allowFolders && file instanceof TFolder) {
+                        if (targetPath.startsWith(file.path + '/') || targetPath === file.path) {
+                            new Notice('Cannot move folder into itself');
+                            return;
+                        }
+                        await this.app.vault.rename(file, targetPath);
+                        new Notice(`Moved folder to ${folder.name}`);
+                    } else {
+                        new Notice('Cannot move this item');
                         return;
                     }
-                    await this.app.vault.rename(file, targetPath);
-                    new Notice(`Moved folder to ${folder.name}`);
-                } else {
-                    new Notice('Cannot move this item');
-                    return;
+                    this.renderContent();
+                } catch (err) {
+                    console.error('Drop error:', err);
+                    const message = err instanceof Error ? err.message : String(err);
+                    new Notice(`Failed to move: ${message}`);
                 }
-                this.renderContent();
-            } catch (err) {
-                console.error('Drop error:', err);
-                const message = err instanceof Error ? err.message : String(err);
-                new Notice(`Failed to move: ${message}`);
-            }
+            })().catch(err => console.error(err));
         });
     }
 

@@ -68,7 +68,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         const scrollTop = containerEl.scrollTop;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'Portals Settings' });
+        containerEl.createEl('h2', { text: 'Portals settings' });
 
         // ---- Settings toggles ----
         new Setting(containerEl)
@@ -98,7 +98,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Tab colors')
-            .setDesc('Show background colors on Portal tabs.')
+            .setDesc('Show background colors on portal tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.tabColorEnabled)
                 .onChange(async (value) => {
@@ -145,7 +145,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         // --- SIDE PORTAL SETTINGS ---
         new Setting(containerEl)
-            .setName('Side Portal')
+            .setName('Side portal')
             .setDesc('Show a collapsible panel at the bottom with additional tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.sidePanelEnabled)
@@ -158,7 +158,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     this.display();
                 }));
         new Setting(containerEl)
-            .setName('Choose Side Portals')
+            .setName('Choose side portals')
             .setDesc('Select which tabs appear in the side portal.')
             .addButton(button => button
                 .setButtonText('Configure')
@@ -177,7 +177,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         // ---- PIN VAULT ROOT ----
         const pinSetting = new Setting(containerEl)
-            .setName('Pin Vault')
+            .setName('Pin vault')
             .setDesc('Show the vault root as the first tab (always on the left). You can customize its icon and color below.');
 
         pinSetting.addToggle(toggle => toggle
@@ -215,7 +215,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             const rootSpace = this.plugin.settings.spaces.find(s => s.path === '/' && s.type === 'folder');
             if (rootSpace) {
                 const rootCustomSetting = new Setting(containerEl)
-                .setName('Pin Vault appearance')
+                .setName('Pin vault appearance')
                 .setDesc('Customize icon and color for the pinned vault root tab.');
 
             const controlEl = rootCustomSetting.controlEl;
@@ -227,12 +227,14 @@ export class SpacesSettingTab extends PluginSettingTab {
 
             // Icon button
             const iconBtn = iconRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Choose icon' } });
-            iconBtn.innerHTML = `<i class="ph ph-${rootSpace.icon}"></i>`;
+            iconBtn.empty();
+            iconBtn.createEl('i', { cls: `ph ph-${rootSpace.icon}` });
             iconBtn.addEventListener('click', () => {
-                new IconPickerModal(this.app, async (iconName) => {
+                new IconPickerModal(this.app, (iconName) => {
                     rootSpace.icon = iconName;
-                    await this.plugin.saveSettings();
-                    this.display();
+                    this.plugin.saveSettings().then(() => {
+                        this.display();
+                    });
                 }).open();
             });
 
@@ -256,31 +258,22 @@ export class SpacesSettingTab extends PluginSettingTab {
             }
 
             // Color input
-            const colorInput = colorContainer.createEl('input', { type: 'color', value: initialHex });
-            colorInput.style.width = '32px';
-            colorInput.style.height = '24px';
-            colorInput.style.padding = '0';
-            colorInput.style.border = 'none';
-            colorInput.style.cursor = 'pointer';
+            const colorInput = colorContainer.createEl('input', {
+                type: 'color',
+                value: initialHex,
+                cls: 'portals-color-input'
+            });
 
             // Opacity number input
             const opacityInput = colorContainer.createEl('input', {
                 type: 'number',
                 value: String(initialOpacity * 100),
+                cls: 'portals-opacity-input',
                 attr: { min: '0', max: '100', step: '1' }
             });
-            opacityInput.style.width = '60px';
-            opacityInput.style.textAlign = 'center';
-            opacityInput.style.padding = '2px';
-            opacityInput.style.border = '1px solid var(--background-modifier-border)';
-            opacityInput.style.borderRadius = '4px';
-            opacityInput.style.background = 'var(--background-primary)';
-            opacityInput.style.color = 'var(--text-normal)';
 
             // Percent sign
-            const percentSpan = colorContainer.createSpan({ text: '%' });
-            percentSpan.style.marginLeft = '2px';
-            percentSpan.style.fontSize = '0.9em';
+            const percentSpan = colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
 
             // Preview swatch
             const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
@@ -294,7 +287,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 const b = parseInt(hex.slice(5,7), 16);
                 const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                 rootSpace.color = rgba;
-                preview.style.backgroundColor = rgba;
+                preview.style.setProperty('--preview-color', rgba);
                 this.plugin.saveSettings();
             };
 
@@ -311,7 +304,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .setButtonText('Add')
                 .setCta()
                 .onClick(() => {
-                    new AddPortalModal(this.app, async (path: string, type: 'folder' | 'tag') => {
+                    new AddPortalModal(this.app, (path: string, type: 'folder' | 'tag') => {
                         if (this.plugin.settings.spaces.some(s => s.path === path && s.type === type)) {
                             new Notice('This portal already exists.');
                             return;
@@ -325,8 +318,9 @@ export class SpacesSettingTab extends PluginSettingTab {
                         if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {
                             this.plugin.settings.selectedSpace = { path, type };
                         }
-                        await this.plugin.saveSettings();
-                        this.display();
+                        this.plugin.saveSettings().then(() => {
+                            this.display();
+                        });
                     }).open();
                 }));
 
@@ -378,14 +372,10 @@ export class SpacesSettingTab extends PluginSettingTab {
         const renderSection = (title: string, portals: SpaceConfig[]) => {
             if (portals.length === 0) return;
 
-            const details = containerEl.createEl('details');
+            const details = containerEl.createEl('details', { cls: 'portals-section-details' });
             details.setAttr('open', 'true');
-            details.style.marginBottom = '16px';
 
-            const summary = details.createEl('summary');
-            summary.style.cursor = 'pointer';
-            summary.style.fontWeight = 'bold';
-            summary.style.padding = '4px 0';
+            const summary = details.createEl('summary', { cls: 'portals-section-summary' });
             summary.createSpan({ text: title });
 
             for (const portal of portals) {
@@ -394,9 +384,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 // Left side: name and path (with truncation)
                 const infoDiv = setting.infoEl;
                 infoDiv.empty();
-                infoDiv.style.display = 'flex';
-                infoDiv.style.flexDirection = 'column';
-                infoDiv.style.minWidth = '0';
+                infoDiv.addClass('portals-portal-info');
 
                 const nameSpan = infoDiv.createEl('span', { cls: 'portals-portal-name' });
                 nameSpan.textContent = getPortalDisplayName(portal);
@@ -416,12 +404,14 @@ export class SpacesSettingTab extends PluginSettingTab {
                 iconBadge.textContent = portal.icon;
 
                 const iconBtn = iconRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Choose icon' } });
-                iconBtn.innerHTML = `<i class="ph ph-${portal.icon}"></i>`;
+                iconBtn.empty();
+                iconBtn.createEl('i', { cls: `ph ph-${portal.icon}` });
                 iconBtn.addEventListener('click', () => {
                     new IconPickerModal(this.app, (iconName) => {
                         portal.icon = iconName;
-                        this.plugin.saveSettings();
-                        this.display();
+                        this.plugin.saveSettings().then(() => {
+                            this.display();
+                        });
                     }).open();
                 });
 
@@ -442,29 +432,19 @@ export class SpacesSettingTab extends PluginSettingTab {
                     }
                 }
 
-                const colorInput = colorContainer.createEl('input', { type: 'color', value: initialHex });
-                colorInput.style.width = '32px';
-                colorInput.style.height = '24px';
-                colorInput.style.padding = '0';
-                colorInput.style.border = 'none';
-                colorInput.style.cursor = 'pointer';
+                const colorInput = colorContainer.createEl('input', {
+                    type: 'color',
+                    value: initialHex,
+                    cls: 'portals-color-input'
+                });
 
                 const opacityInput = colorContainer.createEl('input', {
                     type: 'number',
                     value: String(initialOpacity * 100),
+                    cls: 'portals-opacity-input',
                     attr: { min: '0', max: '100', step: '1' }
                 });
-                opacityInput.style.width = '60px';
-                opacityInput.style.textAlign = 'center';
-                opacityInput.style.padding = '2px';
-                opacityInput.style.border = '1px solid var(--background-modifier-border)';
-                opacityInput.style.borderRadius = '4px';
-                opacityInput.style.background = 'var(--background-primary)';
-                opacityInput.style.color = 'var(--text-normal)';
-                
-                const percentSpan = colorContainer.createSpan({ text: '%' });
-                percentSpan.style.marginLeft = '2px';
-                percentSpan.style.fontSize = '0.9em';
+                const percentSpan = colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
 
                
 
@@ -478,7 +458,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     const b = parseInt(hex.slice(5,7), 16);
                     const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     portal.color = rgba;
-                    preview.style.backgroundColor = rgba;
+                    preview.style.setProperty('--preview-color', rgba);
                     this.plugin.saveSettings();
                 };
 
@@ -487,21 +467,23 @@ export class SpacesSettingTab extends PluginSettingTab {
 
                 // Trash button
                 const trashBtn = colorRow.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Remove portal' } });
-                trashBtn.innerHTML = `<i class="ph ph-trash"></i>`;
-                trashBtn.addEventListener('click', async () => {
+                trashBtn.empty();
+                trashBtn.createEl('i', { cls: 'ph ph-trash' });
+                trashBtn.addEventListener('click', () => {
                     this.plugin.settings.spaces = this.plugin.settings.spaces.filter(s => s !== portal);
                     if (this.plugin.settings.selectedSpace?.path === portal.path && this.plugin.settings.selectedSpace?.type === portal.type) {
                         this.plugin.settings.selectedSpace = this.plugin.settings.spaces[0] 
                             ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
                             : null;
                     }
-                    await this.plugin.saveSettings();
-                    this.display();
+                    this.plugin.saveSettings().then(() => {
+                        this.display();
+                    });
                 });
             }
         };
 
-        containerEl.createEl('h3', { text: 'Active Portals' });
+        containerEl.createEl('h3', { text: 'Active portals' });
 
         renderSection('Root Folders', rootFolders);
         renderSection('Sub Folders', subFolders);
@@ -510,7 +492,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         containerEl.createEl('hr');
 
         // ---- Backup / Restore ----
-        containerEl.createEl('h3', { text: 'Backup / Restore' });
+        containerEl.createEl('h3', { text: 'Backup / restore' });
 
         new Setting(containerEl)
             .setName('Export settings')
@@ -593,10 +575,12 @@ export class SpacesSettingTab extends PluginSettingTab {
         onOpen() {
             const { contentEl } = this;
             contentEl.empty();
-            contentEl.createEl('h2', { text: 'Choose Side Portals' });
+            contentEl.createEl('h2', { text: 'Choose side portals' });
 
-            const desc = contentEl.createEl('p', { text: 'Select which tabs to show in the side panel. At least one must be selected.' });
-            desc.style.marginBottom = '1em';
+            const desc = contentEl.createEl('p', {
+                text: 'Select which tabs to show in the side panel. At least one must be selected.',
+                cls: 'portals-modal-description'
+            });
 
             // Available tabs with display names and icons
             const availableTabs = [
@@ -605,12 +589,10 @@ export class SpacesSettingTab extends PluginSettingTab {
                 { id: 'bookmarks', name: 'Bookmarks', icon: 'bookmark' }
             ];
 
-            const checkboxContainer = contentEl.createDiv();
-            checkboxContainer.style.marginBottom = '1.5em';
+            const checkboxContainer = contentEl.createDiv({ cls: 'portals-checkbox-container' });
 
             for (const tab of availableTabs) {
-                const checkboxDiv = checkboxContainer.createDiv();
-                checkboxDiv.style.marginBottom = '8px';
+                const checkboxDiv = checkboxContainer.createDiv({ cls: 'portals-checkbox-item' });
 
                 const checkbox = checkboxDiv.createEl('input', {
                     type: 'checkbox',
@@ -621,10 +603,9 @@ export class SpacesSettingTab extends PluginSettingTab {
 
                 const label = checkboxDiv.createEl('label', {
                     text: ` ${tab.name}`,
+                    cls: 'portals-checkbox-label',
                     attr: { for: `tab-${tab.id}` }
                 });
-                label.style.marginLeft = '4px';
-                label.style.cursor = 'pointer';
 
                 checkbox.addEventListener('change', (e) => {
                     const target = e.target as HTMLInputElement;
@@ -636,8 +617,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 });
             }
 
-            const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
-            buttonDiv.style.marginTop = '1em';
+            const buttonDiv = contentEl.createDiv({ cls: 'portals-modal-button-container' });
 
             const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
             cancelBtn.addEventListener('click', () => this.close());
@@ -685,7 +665,7 @@ class AddPortalModal extends Modal {
         this.rootFolders.sort((a, b) => a.name.localeCompare(b.name));
         this.subFolders.sort((a, b) => a.name.localeCompare(b.name));
 
-        const tagsObj = (app.metadataCache as any).getTags();
+        const tagsObj = (app.metadataCache as unknown as { getTags(): Record<string, number> }).getTags();
         this.allTags = Object.keys(tagsObj).map(t => t.slice(1)).sort();
     }
 
@@ -695,32 +675,22 @@ class AddPortalModal extends Modal {
         contentEl.createEl('h2', { text: 'Add a new portal' });
 
         const tabBar = contentEl.createDiv({ cls: 'add-portal-tab-bar' });
-        tabBar.style.display = 'flex';
-        tabBar.style.gap = '4px';
-        tabBar.style.marginBottom = '1em';
-        tabBar.style.borderBottom = '1px solid var(--background-modifier-border)';
-        tabBar.style.paddingBottom = '4px';
 
         const createTab = (id: 'root' | 'sub' | 'tag', label: string) => {
-            const tab = tabBar.createEl('div', { cls: 'add-portal-tab' });
-            tab.textContent = label;
-            tab.style.padding = '4px 8px';
-            tab.style.cursor = 'pointer';
-            tab.style.borderRadius = '4px 4px 0 0';
+            const tab = tabBar.createEl('div', { cls: 'add-portal-tab', text: label });
             if (this.currentTab === id) {
-                tab.style.background = 'var(--interactive-accent)';
-                tab.style.color = 'var(--text-on-accent)';
+                tab.addClass('is-active');
             }
             tab.addEventListener('click', () => {
                 this.currentTab = id;
                 this.selectedPath = '';
                 this.filterResults();
+                
+                // Remove active class from all tabs, then add to clicked tab
                 tabBar.querySelectorAll('.add-portal-tab').forEach(t => {
-                    (t as HTMLElement).style.background = '';
-                    (t as HTMLElement).style.color = '';
+                    t.removeClass('is-active');
                 });
-                tab.style.background = 'var(--interactive-accent)';
-                tab.style.color = 'var(--text-on-accent)';
+                tab.addClass('is-active');
             });
         };
 
@@ -728,22 +698,18 @@ class AddPortalModal extends Modal {
         createTab('sub', 'Sub Folders');
         createTab('tag', 'Tags');
 
-        this.searchInput = contentEl.createEl('input', { type: 'text', placeholder: 'Search...' });
-        this.searchInput.style.width = '100%';
-        this.searchInput.style.marginBottom = '1em';
+        this.searchInput = contentEl.createEl('input', {
+            type: 'text',
+            placeholder: 'Search...',
+            cls: 'portals-search-input'
+        });
         this.searchInput.addEventListener('input', () => this.filterResults());
 
-        this.resultsContainer = contentEl.createDiv({ cls: 'add-portal-results' });
-        this.resultsContainer.style.maxHeight = '300px';
-        this.resultsContainer.style.overflowY = 'auto';
-        this.resultsContainer.style.border = '1px solid var(--background-modifier-border)';
-        this.resultsContainer.style.borderRadius = '4px';
-        this.resultsContainer.style.padding = '4px';
+        this.resultsContainer = contentEl.createDiv({ cls: 'portals-results-container' });
 
         this.filterResults();
 
-        const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
-        buttonDiv.style.marginTop = '1em';
+        const buttonDiv = contentEl.createDiv({ cls: 'portals-modal-button-container' });
         buttonDiv.createEl('button', { text: 'Cancel' }).addEventListener('click', () => this.close());
         const addBtn = buttonDiv.createEl('button', { text: 'Add', cls: 'mod-cta' });
         addBtn.addEventListener('click', () => {
@@ -763,54 +729,22 @@ class AddPortalModal extends Modal {
         if (this.currentTab === 'tag') {
             const filtered = this.allTags.filter(t => t.toLowerCase().includes(query));
             for (const tag of filtered) {
-                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item' });
-                item.style.padding = '4px 8px';
-                item.style.cursor = 'pointer';
-                item.style.borderRadius = '2px';
-                item.textContent = '#' + tag;
+                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item', text: '#' + tag });
                 item.addEventListener('click', () => {
-                    this.resultsContainer.querySelectorAll('.add-portal-item').forEach(el => {
-                        (el as HTMLElement).style.background = '';
-                        (el as HTMLElement).style.color = '';
-                    });
-                    item.style.background = 'var(--interactive-accent)';
-                    item.style.color = 'var(--text-on-accent)';
+                    this.resultsContainer.querySelectorAll('.add-portal-item').forEach(el => el.removeClass('is-selected'));
+                    item.addClass('is-selected');
                     this.selectedPath = tag;
-                });
-                item.addEventListener('mouseenter', () => {
-                    if (item.style.background !== 'var(--interactive-accent)')
-                        item.style.background = 'var(--background-modifier-hover)';
-                });
-                item.addEventListener('mouseleave', () => {
-                    if (item.style.background !== 'var(--interactive-accent)')
-                        item.style.background = '';
                 });
             }
         } else {
             const folders = this.currentTab === 'root' ? this.rootFolders : this.subFolders;
             const filtered = folders.filter(f => f.path.toLowerCase().includes(query) || f.name.toLowerCase().includes(query));
             for (const folder of filtered) {
-                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item' });
-                item.style.padding = '4px 8px';
-                item.style.cursor = 'pointer';
-                item.style.borderRadius = '2px';
-                item.textContent = folder.path;
+                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item', text: folder.path });
                 item.addEventListener('click', () => {
-                    this.resultsContainer.querySelectorAll('.add-portal-item').forEach(el => {
-                        (el as HTMLElement).style.background = '';
-                        (el as HTMLElement).style.color = '';
-                    });
-                    item.style.background = 'var(--interactive-accent)';
-                    item.style.color = 'var(--text-on-accent)';
+                    this.resultsContainer.querySelectorAll('.add-portal-item').forEach(el => el.removeClass('is-selected'));
+                    item.addClass('is-selected');
                     this.selectedPath = folder.path;
-                });
-                item.addEventListener('mouseenter', () => {
-                    if (item.style.background !== 'var(--interactive-accent)')
-                        item.style.background = 'var(--background-modifier-hover)';
-                });
-                item.addEventListener('mouseleave', () => {
-                    if (item.style.background !== 'var(--interactive-accent)')
-                        item.style.background = '';
                 });
             }
         }
