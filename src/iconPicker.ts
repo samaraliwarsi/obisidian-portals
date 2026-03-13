@@ -45,7 +45,7 @@ export class IconPickerModal extends Modal {
                     const iconEl = iconGrid.createEl('div', { cls: 'icon-item' });
 
                     // Create an <i> element with the Phosphor icon class
-                    const iEl = iconEl.createEl('i', { cls: `ph ph-${name} portals-icon-picker-icon` });
+                    iconEl.createEl('i', { cls: `ph ph-${name} portals-icon-picker-icon` });
 
                     iconEl.createEl('span', { cls: 'portals-icon-label', text: name });
                     

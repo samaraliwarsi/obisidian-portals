@@ -1,8 +1,17 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Platform, Component } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Platform, Component } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
 import { MarkdownRenderer } from 'obsidian';
+
+interface BookmarkItem {
+    title?: string;
+    path?: string;
+    url?: string;
+    type?: string;
+    id?: string;
+    children?: BookmarkItem[];
+}
 
 const MIN_EXPANDED_HEIGHT = 150;
 const SIDE_TAB_ICONS: Record<string, string> = {
@@ -82,8 +91,7 @@ export class PortalsView extends ItemView {
                     }
                 });
                 // Store ref for cleanup
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- store listener reference for cleanup
-                (this as any).bookmarksListenerRef = ref;
+                this.bookmarksListenerRef = ref;
             }
         };
         setupBookmarksListener();
@@ -132,7 +140,7 @@ export class PortalsView extends ItemView {
         
         //--clean up foldernotes listeners
         if (this.folderNoteEventRefs) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ref can be any event reference type
             this.folderNoteEventRefs.forEach((ref: any) => this.app.vault.offref(ref));
             this.folderNoteEventRefs = null;
         }
@@ -258,6 +266,7 @@ export class PortalsView extends ItemView {
                 if (height <= minHeight + 10) {
                     this.plugin.settings.secondaryPanelCollapsed = true;
                     this.currentSecondaryPanel.classList.add('is-collapsed');
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic height required for collapse
                     this.currentSecondaryPanel.style.height = '42px';
                     if (this.currentSplitter) {
                         this.currentSplitter?.classList.add('is-hidden');
@@ -583,7 +592,7 @@ export class PortalsView extends ItemView {
             collapseIcon.textContent = this.plugin.settings.secondaryPanelCollapsed ? '▲' : '▼';  
 
             // Content area (collapsible)
-            const splitContent = secondaryPanel.createDiv({ cls: 'portals-split-content' });
+            secondaryPanel.createDiv({ cls: 'portals-split-content' });
 
             // Set initial state
             const isCollapsed = this.plugin.settings.secondaryPanelCollapsed;
@@ -592,6 +601,7 @@ export class PortalsView extends ItemView {
                 secondaryPanel.classList.add('is-disabled');
                 splitter.classList.add('is-hidden');
             } else if (isCollapsed) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic height required for collapse
                 secondaryPanel.style.height = '42px';
                 secondaryPanel.classList.add('is-collapsed');
                 splitter.classList.add('is-hidden');
@@ -609,6 +619,7 @@ export class PortalsView extends ItemView {
                 const newCollapsed = !this.plugin.settings.secondaryPanelCollapsed;
                 this.plugin.settings.secondaryPanelCollapsed = newCollapsed;
                 if (newCollapsed) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic height required for collapse
                     secondaryPanel.style.height = '42px';
                     secondaryPanel.classList.add('is-collapsed');
                     splitter.classList.add('is-hidden');
@@ -790,7 +801,7 @@ export class PortalsView extends ItemView {
         } else if (tabId === 'folder-notes') {
             if (!this.plugin.settings.enableFolderNotes) {
                 contentEl.createEl('p', {
-                    text: 'Folder notes are disabled. Enable them in Portal settings (Enable folder notes).',
+                    text: 'Folder notes are disabled. Enable them in settings.',
                     cls: 'portals-folder-note-message'
                 });
                 return;
@@ -805,16 +816,15 @@ export class PortalsView extends ItemView {
 
     private renderBookmarksTab(contentEl: HTMLElement) {
     // Try public API first (future-proofing)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const publicBookmarks = (this.app as any).bookmarks;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let items: any[] = [];
+    // @ts-expect-error - accessing public bookmarks API
+    const publicBookmarks = this.app.bookmarks;
+    let items: BookmarkItem[] = [];
     let usePublic = false;
 
     if (publicBookmarks) {
         // Public API might have getBookmarks() or .items
         if (typeof publicBookmarks.getBookmarks === 'function') {
-            items = publicBookmarks.getBookmarks();
+            items = publicBookmarks.getBookmarks() as BookmarkItem[];
             usePublic = true;
         } else if (Array.isArray(publicBookmarks.items)) {
             items = publicBookmarks.items;
@@ -824,13 +834,13 @@ export class PortalsView extends ItemView {
 
     // Fallback to internal plugin if public API not available or returned nothing
     if (!usePublic || items.length === 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing internal plugin API w
-        const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+        // @ts-expect-error -- accessing internal plugin API
+        const bookmarksPlugin = this.app.internalPlugins?.getPluginById('bookmarks');
         if (!bookmarksPlugin?.enabled || !bookmarksPlugin.instance) {
             contentEl.createEl('p', { text: 'The bookmarks core plugin is not enabled. Settings → core plugins.' });
             return;
         }
-        items = bookmarksPlugin.instance.items;
+        items = bookmarksPlugin.instance.items as BookmarkItem[];
         if (!items || !Array.isArray(items)) {
             contentEl.createEl('p', { text: 'No bookmarks found.' });
             return;
@@ -851,8 +861,7 @@ export class PortalsView extends ItemView {
     };
 
     // Recursive render function
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const renderItem = (item: any, container: HTMLElement) => {
+    const renderItem = (item: BookmarkItem, container: HTMLElement) => {
         if (item.children && Array.isArray(item.children) && item.children.length > 0) {
             // Folder/group
             const details = container.createEl('details', { cls: 'folder-details' });
@@ -878,8 +887,7 @@ export class PortalsView extends ItemView {
             });
 
             const childrenContainer = details.createDiv({ cls: 'folder-children' });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            item.children.forEach((child: any) => renderItem(child, childrenContainer));
+            item.children.forEach((child: BookmarkItem) => renderItem(child, childrenContainer));
         } else {
             // Leaf item
             const fileEl = container.createDiv({ cls: 'file-item' });
@@ -901,22 +909,27 @@ export class PortalsView extends ItemView {
             const displayName = item.title || item.path || item.url || 'Untitled';
             const nameSpan = fileEl.createSpan({ text: displayName });
             nameSpan.addClass('portals-item-name');
-            fileEl.dataset.path = item.path || item.url;
+            fileEl.dataset.path = item.path || item.url || '';
 
             // Left‑click to open
             fileEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (item.type === 'url' || item.url) {
-                    window.open(item.url || item.path, '_blank');
+                    const url = item.url || item.path;
+                    if (url) window.open(url, '_blank');
                 } else if (item.type === 'file' || item.path) {
-                    const file = this.app.vault.getAbstractFileByPath(item.path);
-                    if (file instanceof TFile) {
-                        void this.app.workspace.getLeaf().openFile(file);
-                    } else if (file instanceof TFolder) {
-                        void this.app.workspace.openLinkText(item.path, '/', false);
+                    if (item.path) {
+                        const file = this.app.vault.getAbstractFileByPath(item.path);
+                        if (file instanceof TFile) {
+                            void this.app.workspace.getLeaf().openFile(file);
+                        } else if (file instanceof TFolder) {
+                            void this.app.workspace.openLinkText(item.path, '/', false);
+                        }
                     }
                 } else if (item.type === 'folder') {
-                    void this.app.workspace.openLinkText(item.path, '/', false);
+                    if (item.path) {
+                        void this.app.workspace.openLinkText(item.path, '/', false);
+                    }
                 }
             });
 
@@ -936,18 +949,14 @@ export class PortalsView extends ItemView {
             });
         }
     };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    items.forEach((item: any) => renderItem(item, contentEl));
+    items.forEach(item => renderItem(item, contentEl));
 }
 
 // Helper method to delete a bookmark item (add this to your class)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- bookmark item structure varies and is untyped
-private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
+private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () => void) {
     if (usePublic) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing public bookmarks API which is not typed
-
-        const publicBookmarks = (this.app as any).bookmarks;
+        // @ts-ignore-- accessing public bookmarks API
+        const publicBookmarks = this.app.bookmarks;
         if (publicBookmarks?.remove && item.id) {
             publicBookmarks.remove(item.id);
         }
@@ -1209,8 +1218,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const sortBy = this.plugin.settings.sortBy;
         const sortOrder = this.plugin.settings.sortOrder;
         taggedFiles.sort((a: TFile, b: TFile) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let aVal: any, bVal: any;
+            let aVal: string | number, bVal: string | number;
             switch (sortBy) {
                 case 'name':
                     aVal = a.name;
@@ -1395,7 +1403,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
     private executeCommand(commandId: string) {
         try {
-            // slint-disable-next-line @typescript-eslint/no-explicit-any -- accessing commands API which is not typed
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing commands API which is not typed
             (this.app as any).commands.executeCommandById(commandId);
         } catch (err) {
             const message = err instanceof Error ? err.message: String(err);
@@ -1857,7 +1865,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts array of mixed folder/file types
     private sortFolderChildren(children: any[]): any[] {
         const folders = children.filter(c => c instanceof TFolder);
         const files = children.filter(c => c instanceof TFile);
@@ -1865,7 +1873,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         folders.sort((a, b) => a.name.localeCompare(b.name));
 
         const fileSortFunc = (a: TFile, b: TFile) => {
-            let aVal: any, bVal: any;
+            let aVal: string | number, bVal: string | number;
             switch (this.plugin.settings.sortBy) {
                 case 'name':
                     aVal = a.name;

@@ -66,12 +66,12 @@ export class SpacesSettingTab extends PluginSettingTab {
         const scrollTop = containerEl.scrollTop;
         containerEl.empty();
 
-        new Setting(containerEl).setName('Portals settings').setHeading();
+        new Setting(containerEl).setName('General').setHeading();
 
         // ---- Settings toggles ----
         new Setting(containerEl)
             .setName('Replace file explorer in left sidebar')
-            .setDesc('Portals replaces the default file explorer on startup. The file explorer remains accessible via commands or obsidian tabs.')
+            .setDesc('Portals replaces the default file explorer on startup. The file explorer remains accessible via commands or Obsidian tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.replaceFileExplorer)
                 .onChange(async (value) => {
@@ -481,7 +481,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             }
         };
 
-        new Setting(containerEl).setName('Active portals').setHeading();
+        new Setting(containerEl).setName('Active tabs').setHeading();
 
         renderSection('Root Folders', rootFolders);
         renderSection('Sub Folders', subFolders);
@@ -549,7 +549,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
                 this.display();
                 new Notice('Settings imported successfully');
-            } catch (_e) {
+            } catch {
                 new Notice('Invalid settings file');
             }
         };
