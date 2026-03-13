@@ -1,8 +1,8 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Platform, setIcon, Component } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Modal, App, Platform, Component } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
-import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
+import { MarkdownRenderer } from 'obsidian';
 
 const MIN_EXPANDED_HEIGHT = 150;
 const SIDE_TAB_ICONS: Record<string, string> = {
@@ -10,48 +10,6 @@ const SIDE_TAB_ICONS: Record<string, string> = {
     'folder-notes': 'note',
     bookmarks: 'bookmark'
 };
-
-// Simple text input modal for rename
-class InputModal extends Modal {
-    constructor(
-        app: App,
-        private title: string,
-        private placeholder: string,
-        private defaultValue: string,
-        private onSubmit: (value: string) => void
-    ) {
-        super(app);
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.createEl('h2', { text: this.title });
-
-        const input = contentEl.createEl('input', {
-            type: 'text',
-            value: this.defaultValue,
-            placeholder: this.placeholder
-        });
-        input.style.width = '100%';
-        input.style.marginBottom = '1em';
-
-        const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
-        buttonDiv.createEl('button', { text: 'Cancel' }).addEventListener('click', () => this.close());
-        const submitBtn = buttonDiv.createEl('button', { text: 'Submit', cls: 'mod-cta' });
-        submitBtn.addEventListener('click', () => {
-            this.onSubmit(input.value);
-            this.close();
-        });
-
-        input.focus();
-        input.select();
-    }
-
-    onClose() {
-        this.contentEl.empty();
-    }
-}
 
 export const VIEW_TYPE_PORTALS = 'portals-view';
 
@@ -68,7 +26,7 @@ export class PortalsView extends ItemView {
     private currentSplitter: HTMLElement | null = null;
     private sortableInstance: Sortable | null = null;
     private folderNoteEventRefs: Array<unknown> | null = null;
-    private bookmarksListenerRef: unknown | null = null;
+    private bookmarksListenerRef: unknown = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -88,7 +46,7 @@ export class PortalsView extends ItemView {
     }
 
     async onOpen() {
-        await this.render();
+        this.render();
 
         const renameRef = this.app.vault.on('rename', () => this.renderContent());
         const deleteRef = this.app.vault.on('delete', () => this.renderContent());
@@ -110,8 +68,8 @@ export class PortalsView extends ItemView {
 
         // Set up bookmarks change listener (using internal plugin for now)
         const setupBookmarksListener = () => {
-            //--@ts-expect-error - accessing internal plugin API
-            const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+            // @ts-expect-error - accessing internal plugin API
+            const bookmarksPlugin = this.app.internalPlugins?.getPluginById('bookmarks');
             if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.on === 'function') {
                 const ref = bookmarksPlugin.instance.on('changed', () => {
                     const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
@@ -124,7 +82,7 @@ export class PortalsView extends ItemView {
                     }
                 });
                 // Store ref for cleanup
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- store listener reference for cleanup
                 (this as any).bookmarksListenerRef = ref;
             }
         };
@@ -155,6 +113,7 @@ export class PortalsView extends ItemView {
         document.addEventListener('touchmove', this.handleDragMove, { passive: false });
         document.addEventListener('mouseup', this.handleDragEnd);
         document.addEventListener('touchend', this.handleDragEnd);
+        await Promise.resolve()
     }
 
     async onClose() {
@@ -173,15 +132,16 @@ export class PortalsView extends ItemView {
         
         //--clean up foldernotes listeners
         if (this.folderNoteEventRefs) {
-            this.folderNoteEventRefs.forEach((ref:any) => this.app.vault.offref(ref));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            this.folderNoteEventRefs.forEach((ref: any) => this.app.vault.offref(ref));
             this.folderNoteEventRefs = null;
         }
 
         // Clean up bookmarks listener
         const ref = this.bookmarksListenerRef;
         if (ref) {
-            //--@ts-expect-error - accessing internal plugin API
-            const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+            // @ts-expect-error - accessing internal plugin API
+            const bookmarksPlugin = this.app.internalPlugins?.getPluginById('bookmarks');
             if (bookmarksPlugin?.instance && typeof bookmarksPlugin.instance.off === 'function') {
                 bookmarksPlugin.instance.off('changed', ref);
             }
@@ -192,6 +152,8 @@ export class PortalsView extends ItemView {
         document.removeEventListener('touchmove', this.handleDragMove);
         document.removeEventListener('mouseup', this.handleDragEnd);
         document.removeEventListener('touchend', this.handleDragEnd);
+
+        await Promise.resolve();
     }
 
     private getTooltipEl(): HTMLElement {
@@ -208,8 +170,7 @@ export class PortalsView extends ItemView {
         const rect = target.getBoundingClientRect();
         tooltip.style.top = (rect.bottom + 6) + 'px';
         tooltip.style.left = (rect.left + rect.width / 2) + 'px';
-        tooltip.style.transform = 'translateX(-50%)';
-        tooltip.style.display = 'block';
+        tooltip.classList.add('is-visible');
 
         if (this.tooltipTimeout) {
             window.clearTimeout(this.tooltipTimeout);
@@ -224,14 +185,12 @@ export class PortalsView extends ItemView {
         }
         if (delay > 0) {
             this.tooltipTimeout = window.setTimeout(() => {
-                if (this.tooltipEl) {
-                    this.tooltipEl.style.display = 'none';
-                }
+                const tooltip = this.getTooltipEl();
+                tooltip.classList.remove('is-visible');
             }, delay);
         } else {
-            if (this.tooltipEl) {
-                this.tooltipEl.style.display = 'none';
-            }
+            const tooltip = this.getTooltipEl();
+            tooltip.classList.remove('is-visible');
         }
     }
 
@@ -240,7 +199,7 @@ export class PortalsView extends ItemView {
     private handleDragStart = (e: MouseEvent | TouchEvent) => {
         if (!this.plugin.settings.sidePanelEnabled) return;
         this.isDraggingSplitter = true;
-        document.body.style.cursor = 'ns-resize';
+        document.body.classList.add('portals-dragging');
         e.preventDefault();
     };
 
@@ -257,7 +216,7 @@ export class PortalsView extends ItemView {
 
         if (e instanceof TouchEvent) {
             const touch = e.touches[0];
-            if (!touch) return; // no touch point – abort
+            if (!touch) return;
             clientY = touch.clientY;
         } else {
             clientY = e.clientY;
@@ -269,45 +228,43 @@ export class PortalsView extends ItemView {
         let newHeight = Math.min(maxHeight, Math.max(minHeight, rect.height - relativeY));
 
         this.currentSecondaryPanel.style.height = newHeight + 'px';
-        const splitContent = this.currentSecondaryPanel.querySelector('.portals-split-content') as HTMLElement;
-        if (splitContent) splitContent.style.display = 'block';
-        if (this.currentSplitter) this.currentSplitter.style.display = 'block';
 
-        // update lastExpanded height only above collapse threshold
+        // Ensure splitter is visible (remove hidden class)
+        if (this.currentSplitter) {
+            this.currentSplitter.classList.remove('is-hidden');
+        }
+
         const COLLAPSE_THRESHOLD = 80;
         if (!this.plugin.settings.secondaryPanelCollapsed && newHeight > COLLAPSE_THRESHOLD) {
             this.plugin.settings.lastExpandedHeight = newHeight;
         }
-       
 
         this.plugin.settings.secondaryPanelHeight = newHeight;
         this.plugin.settings.secondaryPanelCollapsed = false;
         this.currentSecondaryPanel.classList.remove('is-collapsed');
         const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
         if (collapseIcon) collapseIcon.textContent = '▼';
-        this.plugin.saveData(this.plugin.settings);
+        void this.plugin.saveData(this.plugin.settings);
     };
 
     private handleDragEnd = (e: MouseEvent | TouchEvent) => {
         if (this.isDraggingSplitter) {
             this.isDraggingSplitter = false;
-            document.body.style.cursor = '';
+            document.body.classList.remove('portals-dragging');
 
-            // Snap‑to‑collapse: if dragged almost to the bottom, collapse
             if (this.currentSecondaryPanel) {
                 const height = parseFloat(this.currentSecondaryPanel.style.height);
                 const minHeight = 50;
                 if (height <= minHeight + 10) {
                     this.plugin.settings.secondaryPanelCollapsed = true;
                     this.currentSecondaryPanel.classList.add('is-collapsed');
-                    this.currentSecondaryPanel.style.borderTop = '';
                     this.currentSecondaryPanel.style.height = '42px';
-                    const splitContent = this.currentSecondaryPanel.querySelector('.portals-split-content') as HTMLElement;
-                    if (splitContent) splitContent.style.display = 'none';
-                    if (this.currentSplitter) this.currentSplitter.style.display = 'none';
+                    if (this.currentSplitter) {
+                        this.currentSplitter?.classList.add('is-hidden');
+                    }
                     const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
                     if (collapseIcon) collapseIcon.textContent = '▲';
-                    this.plugin.saveData(this.plugin.settings);
+                    void this.plugin.saveData(this.plugin.settings);
                 }
             }
         }
@@ -322,15 +279,14 @@ export class PortalsView extends ItemView {
             const secondaryPanel = this.currentSecondaryPanel;
             if (secondaryPanel) {
                 secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
-                const splitContent = secondaryPanel.querySelector('.portals-split-content') as HTMLElement;
-                if (splitContent) splitContent.style.display = 'block';
-                if (this.currentSplitter) this.currentSplitter.style.display = 'block';
+                secondaryPanel.classList.remove('is-collapsed');
+                if (this.currentSplitter) {
+                    this.currentSplitter.classList.remove('is-hidden');
+                }
                 const collapseIcon = secondaryPanel.querySelector('.portals-collapse-icon');
                 if (collapseIcon) collapseIcon.textContent = '▼';
-                // Remove the collapsed class so CSS can apply the correct border
-                secondaryPanel.classList.remove('is-collapsed');
             }
-            this.plugin.saveData(this.plugin.settings);
+            void this.plugin.saveData(this.plugin.settings);
         }
     }
 
@@ -425,9 +381,9 @@ export class PortalsView extends ItemView {
                 if (space.path === '/') {
                     tab.addClass('portals-tab-pinned');
                     if (this.plugin.settings.tabColorEnabled && space.color && space.color !== 'transparent') {
-                        tab.style.borderLeft = `2px solid ${space.color}`;
+                        tab.style.setProperty('--tab-pinned-color', space.color);
                     } else {
-                        tab.style.borderLeft = '';
+                        tab.style.removeProperty('--tab-pinned-color');
                     }
                 }
 
@@ -454,15 +410,14 @@ export class PortalsView extends ItemView {
 
                 if (this.plugin.settings.tabColorEnabled && space.color && space.color !== 'transparent') {
                     if (isActive) {
-                        tab.style.borderBottomColor = space.color;
+                        tab.style.setProperty('--tab-active-color', space.color);
                     } else {
-                        tab.style.borderBottomColor = '';
+                        tab.style.removeProperty('--tab-active-color');
                     }
                 } else {
-                    tab.style.borderBottomColor = '';
+                    tab.style.removeProperty('--tab-active-color');
                 }
-
-                tab.style.background = '';
+                
                 tab.dataset.path = space.path;
                 tab.dataset.type = space.type;
 
@@ -482,7 +437,7 @@ export class PortalsView extends ItemView {
                         this.plugin.settings.openFolders.push(space.path);
                     }
 
-                    this.plugin.saveSettings()
+                    void this.plugin.saveSettings()
                         .then(() => this.render())
                         .then(() => {
                             const newActiveTab = container.querySelector('.portals-tab.is-active');
@@ -501,7 +456,7 @@ export class PortalsView extends ItemView {
             delayOnTouchOnly: true,
             touchStartThreshold: 5,
             scrollSensitivity: 30,
-            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises -- Sortable expects void, but we use async for await
             onEnd: async (evt: SortableEvent) => {
                 const newOrder: SpaceConfig[] = [];
                 const tabElements = tabBar.querySelectorAll('.portals-tab');
@@ -592,14 +547,14 @@ export class PortalsView extends ItemView {
                 if (tabId === activeTab) {
                     tabBtn.addClass('is-active');
                     if (rootColor) {
-                        tabBtn.style.borderBottomColor = rootColor;
+                        tabBtn.style.setProperty('--split-tab-active-color', rootColor);
                     }
                 }
 
                 tabBtn.addEventListener('click', () => {
                     this.expandPanel();
                     this.plugin.settings.activeSplitTab = tabId;
-                    this.plugin.saveData(this.plugin.settings);
+                    void this.plugin.saveData(this.plugin.settings);
 
                     // Update active state on all split tabs without rebuilding them
                     tabContainer.querySelectorAll('.portals-split-tab').forEach(t => {
@@ -609,7 +564,7 @@ export class PortalsView extends ItemView {
                         
                         // Remove active class from all tabs
                         currentTab.removeClass('is-active');
-                        currentTab.style.borderBottomColor = '';
+                        currentTab.style.removeProperty('--split-tab-active-color');
                     });
 
                     // Add active class to clicked tab
@@ -634,18 +589,16 @@ export class PortalsView extends ItemView {
             const isCollapsed = this.plugin.settings.secondaryPanelCollapsed;
             const panelHeight = this.plugin.settings.secondaryPanelHeight || 200;
             if (!this.plugin.settings.sidePanelEnabled) {
-                secondaryPanel.style.display = 'none';
-                splitter.style.display = 'none';
+                secondaryPanel.classList.add('is-disabled');
+                splitter.classList.add('is-hidden');
             } else if (isCollapsed) {
                 secondaryPanel.style.height = '42px';
-                splitContent.style.display = 'none';
-                splitter.style.display = 'none';
                 secondaryPanel.classList.add('is-collapsed');
+                splitter.classList.add('is-hidden');
             } else {
                 secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
-                splitContent.style.display = 'block';
-                splitter.style.display = 'block';
-                secondaryPanel.classList.remove('is-collapsed');                
+                secondaryPanel.classList.remove('is-collapsed');
+                splitter.classList.remove('is-hidden');
             }
 
             // Toggle collapse on icon click
@@ -657,18 +610,16 @@ export class PortalsView extends ItemView {
                 this.plugin.settings.secondaryPanelCollapsed = newCollapsed;
                 if (newCollapsed) {
                     secondaryPanel.style.height = '42px';
-                    splitContent.style.display = 'none';
-                    splitter.style.display = 'none';
-                    collapseIcon.textContent = '▲';
                     secondaryPanel.classList.add('is-collapsed');
+                    splitter.classList.add('is-hidden');
+                    collapseIcon.textContent = '▲';
                 } else {
                     secondaryPanel.style.height = Math.max(this.plugin.settings.lastExpandedHeight, MIN_EXPANDED_HEIGHT) + 'px';
-                    splitContent.style.display = 'block';
-                    splitter.style.display = 'block';
-                    collapseIcon.textContent = '▼';
                     secondaryPanel.classList.remove('is-collapsed');
+                    splitter.classList.remove('is-hidden');   
+                    collapseIcon.textContent = '▼';   
                 }
-                this.plugin.saveData(this.plugin.settings);
+                void this.plugin.saveData(this.plugin.settings);
             });
 
             // Make splitter draggable (mouse + touch)
@@ -759,15 +710,15 @@ export class PortalsView extends ItemView {
                 const setSort = (by: 'name' | 'created' | 'modified', order: 'asc' | 'desc') => {
                     this.plugin.settings.sortBy = by;
                     this.plugin.settings.sortOrder = order;
-                    this.plugin.saveData(this.plugin.settings);
+                    void this.plugin.saveData(this.plugin.settings);
                     this.renderContent();
                 };
                 menu.addItem(item => item
-                    .setTitle('Name (A → Z)')
+                    .setTitle('Name ascending')
                     .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'asc')
                     .onClick(() => setSort('name', 'asc')));
                 menu.addItem(item => item
-                    .setTitle('Name (Z → A)')
+                    .setTitle('Name descending')
                     .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'desc')
                     .onClick(() => setSort('name', 'desc')));
                 menu.addSeparator();
@@ -827,7 +778,7 @@ export class PortalsView extends ItemView {
 
                 fileEl.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.app.workspace.getLeaf().openFile(file);
+                    void this.app.workspace.getLeaf().openFile(file);
                 });
 
                 fileEl.addEventListener('contextmenu', (e) => {
@@ -839,7 +790,7 @@ export class PortalsView extends ItemView {
         } else if (tabId === 'folder-notes') {
             if (!this.plugin.settings.enableFolderNotes) {
                 contentEl.createEl('p', {
-                    text: 'Folder notes are disabled. Enable them in portal settings > Enable folder notes',
+                    text: 'Folder notes are disabled. Enable them in Portal settings (Enable folder notes).',
                     cls: 'portals-folder-note-message'
                 });
                 return;
@@ -873,7 +824,7 @@ export class PortalsView extends ItemView {
 
     // Fallback to internal plugin if public API not available or returned nothing
     if (!usePublic || items.length === 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing internal plugin API w
         const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
         if (!bookmarksPlugin?.enabled || !bookmarksPlugin.instance) {
             contentEl.createEl('p', { text: 'The bookmarks core plugin is not enabled. Settings → core plugins.' });
@@ -927,6 +878,7 @@ export class PortalsView extends ItemView {
             });
 
             const childrenContainer = details.createDiv({ cls: 'folder-children' });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             item.children.forEach((child: any) => renderItem(child, childrenContainer));
         } else {
             // Leaf item
@@ -959,12 +911,12 @@ export class PortalsView extends ItemView {
                 } else if (item.type === 'file' || item.path) {
                     const file = this.app.vault.getAbstractFileByPath(item.path);
                     if (file instanceof TFile) {
-                        this.app.workspace.getLeaf().openFile(file);
+                        void this.app.workspace.getLeaf().openFile(file);
                     } else if (file instanceof TFolder) {
-                        this.app.workspace.openLinkText(item.path, '/', false);
+                        void this.app.workspace.openLinkText(item.path, '/', false);
                     }
                 } else if (item.type === 'folder') {
-                    this.app.workspace.openLinkText(item.path, '/', false);
+                    void this.app.workspace.openLinkText(item.path, '/', false);
                 }
             });
 
@@ -985,21 +937,23 @@ export class PortalsView extends ItemView {
         }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items.forEach((item: any) => renderItem(item, contentEl));
 }
 
 // Helper method to delete a bookmark item (add this to your class)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- bookmark item structure varies and is untyped
 private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
     if (usePublic) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing public bookmarks API which is not typed
+
         const publicBookmarks = (this.app as any).bookmarks;
         if (publicBookmarks?.remove && item.id) {
             publicBookmarks.remove(item.id);
         }
     } else {
-        //--@ts-expect-error - accessing internal plugin API
-        const bookmarksPlugin = (this.app as any).internalPlugins?.getPluginById('bookmarks');
+        // @ts-expect-error - accessing internal plugin API
+        const bookmarksPlugin = this.app.internalPlugins?.getPluginById('bookmarks');
         if (!bookmarksPlugin?.instance) return;
         // Try different deletion methods
         if (typeof bookmarksPlugin.instance.removeItem === 'function') {
@@ -1072,7 +1026,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
             if (!targetFile) {
                 contentEl.createEl('p', {
-                    text: 'No folder note found for the vault root. Create a file named like your vault (e.g., "MyVault.md") at the root to use as folder note.',
+                    text: 'No folder note found for the vault root. Create a file named exactly like your vault at the root to use as folder note.',
                     cls: 'portals-folder-note-message'
                 });
                 return;
@@ -1111,9 +1065,6 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
     private renderFolderNoteContent(file: TFile, container: HTMLElement) {
         const noteContainer = container.createDiv({ cls: 'markdown-preview-view' });
-        noteContainer.style.height = '100%';
-        noteContainer.style.overflowY = 'auto';
-        noteContainer.style.cursor = 'pointer';
 
         this.app.vault.read(file).then(async (content) => {
             try {
@@ -1132,7 +1083,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
         noteContainer.addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('a')) return;
-            this.app.workspace.getLeaf().openFile(file);
+            void this.app.workspace.getLeaf().openFile(file);
         });
     }
 
@@ -1172,7 +1123,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             link.setText(targetFile.name + (anchor ? ` → ${anchor}` : ''));
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.app.workspace.getLeaf().openFile(targetFile);
+                void this.app.workspace.getLeaf().openFile(targetFile);
             });
             embed.replaceWith(linkContainer);
         }
@@ -1224,15 +1175,19 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const bgColor = color || 'transparent';
         const style = this.plugin.settings.filePaneColorStyle;
 
+        // Remove any previous background classes
+        el.removeClass('solid-bg', 'gradient-bg');
+
         if (style === 'none' || bgColor === 'transparent') {
-            el.style.background = 'transparent';
+            el.style.removeProperty('--space-bg-color');
             return;
         }
 
+        el.style.setProperty('--space-bg-color', bgColor);
         if (style === 'solid') {
-            el.style.background = bgColor;
+            el.addClass('solid-bg');
         } else if (style === 'gradient') {
-            el.style.background = `linear-gradient(to bottom, ${bgColor} 25%, transparent)`;
+            el.addClass('gradient-bg');
         }
     }
 
@@ -1254,6 +1209,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         const sortBy = this.plugin.settings.sortBy;
         const sortOrder = this.plugin.settings.sortOrder;
         taggedFiles.sort((a: TFile, b: TFile) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let aVal: any, bVal: any;
             switch (sortBy) {
                 case 'name':
@@ -1331,7 +1287,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                         fileEl.addClass('is-selected');
                     }
                 } else {
-                    this.app.workspace.getLeaf().openFile(file);
+                    void this.app.workspace.getLeaf().openFile(file);
                 }
             });
 
@@ -1348,24 +1304,24 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         menu.addItem(item => item
             .setTitle('Open in new tab')
             .setIcon('document')
-            .onClick(() => this.app.workspace.getLeaf('tab').openFile(file)));
+            .onClick(() => void this.app.workspace.getLeaf('tab').openFile(file)));
 
         menu.addItem(item => item
             .setTitle('Open to the right')
             .setIcon('file-symlink')
-            .onClick(() => this.app.workspace.getLeaf('split', 'vertical').openFile(file)));
+            .onClick(() => void this.app.workspace.getLeaf('split', 'vertical').openFile(file)));
 
         menu.addSeparator();
 
         menu.addItem(item => item
             .setTitle('Delete')
             .setIcon('trash')
-            .onClick(() => this.deleteFile(file)));
+            .onClick(() => void this.deleteFile(file)));
 
         menu.addItem(item => item
             .setTitle('Duplicate')
             .setIcon('copy')
-            .onClick(() => this.duplicateFile(file)));
+            .onClick(() => void this.duplicateFile(file)));
 
         menu.addItem(item => item
             .setTitle('Rename')
@@ -1385,17 +1341,17 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
         menu.addItem(item => item
             .setTitle('New note')
             .setIcon('document')
-            .onClick(() => this.newNoteInFolder(folder)));
+            .onClick(() => void this.newNoteInFolder(folder)));
 
         menu.addItem(item => item
             .setTitle('New folder')
             .setIcon('folder')
-            .onClick(() => this.newFolderInFolder(folder)));
+            .onClick(() => void this.newFolderInFolder(folder)));
 
         menu.addItem(item => item
             .setTitle('New canvas')
             .setIcon('layout-dashboard')
-            .onClick(() => this.newCanvasInFolder(folder)));
+            .onClick(() => void this.newCanvasInFolder(folder)));
 
         if (this.plugin.settings.enableFolderNotes && folder.path !== '/') {
             const folderNote = folder.children.find((child): child is TFile =>
@@ -1404,16 +1360,21 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                 menu.addItem(item => item
                     .setTitle('Open folder note')
                     .setIcon('note')
-                    .onClick(() => this.app.workspace.getLeaf().openFile(folderNote)));
+                    .onClick(() => void this.app.workspace.getLeaf().openFile(folderNote)));
             } else {
                 menu.addItem(item => item
                     .setTitle('Create folder note')
                     .setIcon('plus')
-                    .onClick(() => this.createFolderNote(folder)));
+                    .onClick(() => void this.createFolderNote(folder)));
             }
         }
 
         menu.addSeparator();
+
+        menu.addItem(item => item
+            .setTitle('Delete')
+            .setIcon('trash')
+            .onClick(() => void this.deleteFolder(folder)));
 
         menu.addItem(item => item
             .setTitle('Duplicate')
@@ -1425,11 +1386,6 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             .setIcon('pencil')
             .onClick(() => this.startRenameFolder(folder, summaryEl)));
 
-        menu.addItem(item => item
-            .setTitle('Delete')
-            .setIcon('trash')
-            .onClick(() => this.deleteFolder(folder)));
-
         menu.addSeparator();
 
         this.app.workspace.trigger('file-menu', menu, folder, 'file-explorer');
@@ -1439,7 +1395,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
     private executeCommand(commandId: string) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // slint-disable-next-line @typescript-eslint/no-explicit-any -- accessing commands API which is not typed
             (this.app as any).commands.executeCommandById(commandId);
         } catch (err) {
             const message = err instanceof Error ? err.message: String(err);
@@ -1585,7 +1541,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
             const leaves = this.app.workspace.getLeavesOfType(type);
             const found = leaves.some(leaf => {
                 const view = leaf.view;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing view.file which is not typed
                 return view && (view as any).file && (view as any).file.path === file.path;
             });
             if (found) return true;
@@ -1626,7 +1582,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
     private async deleteFile(file: TFile) {
         try {
-            await this.app.vault.trash(file, false);
+            await this.app.fileManager.trashFile(file);
             new Notice(`File "${file.name}" moved to trash`, 2000); // auto-hide after 2s
             this.renderContent();
         } catch (err) {
@@ -1637,7 +1593,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
     private async deleteFolder(folder: TFolder) {
         try {
-            await this.app.vault.trash(folder, false);
+            await this.app.fileManager.trashFile(folder);
             new Notice(`Folder "${folder.name}" moved to trash`, 2000);
             this.renderContent();
         } catch (err) {
@@ -1665,7 +1621,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                 await this.plugin.saveData(this.plugin.settings);
             }
 
-            await this.renderContent();
+            this.renderContent();
             this.triggerRenameOnPath(newFile.path);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
@@ -1690,7 +1646,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                 await this.plugin.saveData(this.plugin.settings);
             }
 
-            await this.renderContent();
+            this.renderContent();
             this.triggerRenameOnPath(candidate);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
@@ -1810,7 +1766,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
 
                 const folderNote = this.getFolderNote(folder);
                 if (folderNote) {
-                    this.app.workspace.getLeaf('tab').openFile(folderNote);
+                    void this.app.workspace.getLeaf('tab').openFile(folderNote);
                 }
             }
         });
@@ -1867,7 +1823,7 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                                 fileEl.addClass('is-selected');
                             }
                         } else {
-                            this.app.workspace.getLeaf().openFile(child);
+                            void this.app.workspace.getLeaf().openFile(child);
                         }
                     });
 
@@ -1897,10 +1853,11 @@ private deleteBookmarkItem(item: any, usePublic: boolean, refresh: () => void) {
                 openFolders = openFolders.filter(p => p !== path);
             }
             this.plugin.settings.openFolders = openFolders;
-            this.plugin.saveData(this.plugin.settings);
+            void this.plugin.saveData(this.plugin.settings);
         });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private sortFolderChildren(children: any[]): any[] {
         const folders = children.filter(c => c instanceof TFolder);
         const files = children.filter(c => c instanceof TFile);

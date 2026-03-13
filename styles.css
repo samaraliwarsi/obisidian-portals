@@ -4669,6 +4669,27 @@
     margin-top: 16px;
 }
 
+.icon-picker-search {
+    width: 100%;
+    margin-bottom: 16px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.portals-input-modal-input {
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.portals-icon-picker-icon {
+    font-size: 24px;
+}
+
+.icon-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
 /* ===== Add Portal Modal ===== */
 .add-portal-tab-bar {
     display: flex;
@@ -4923,9 +4944,13 @@ z-index: 10000;
 pointer-events: none;
 transition: opacity 0.15s ease;
 opacity: 0;
-display: none;
+display: block;
+transform: translateX(-50%);
 }
 
+.portals-floating-tooltip.is-visible {
+  opacity: 1;
+}
 .portals-floating-tooltip[style*="display: block"] {
 opacity: 1;
 }
@@ -4943,6 +4968,14 @@ overflow-y: auto;
 border-radius: 6px;
 padding: 8px;
 margin: 0;
+}
+
+.portals-space-content.solid-bg {
+    background: var(--space-bg-color, transparent);
+}
+
+.portals-space-content.gradient-bg {
+    background: linear-gradient(to bottom, var(--space-bg-color, transparent) 25%, transparent);
 }
 
 .portals-space-content > :last-child,
@@ -5227,23 +5260,29 @@ justify-content: flex-start !important;
     transition: border-color 0.1;
 }
 
-.portals-split-tab:hover {
-    background: var(--interactive-accent);
-    background: rgba(128, 128, 128, 0.1);
+.portals-splitter.is-hidden {
+    display: none;
+}
+
+body.portals-dragging {
+    cursor: ns-resize !important;
+    user-select: none;
 }
 
 /* Secondary panel */
 .portals-secondary-panel {
     flex-shrink: 0;
     overflow: hidden;
-    border-bottom: 1px solid var(--background-modifier-border);
+    border-bottom: 1.5px solid var(--background-modifier-border);
+    border-top: none;
 }
 
 .portals-secondary-panel.is-collapsed {
-    border-top: 1px solid var(--background-modifier-border);
+  border-top: 1.5px solid var(--background-modifier-border);
 }
-.portals-secondary-panel:not(.is-collapsed) {
-    border-top: none;
+
+.portals-secondary-panel.is-disabled {
+    display: none;
 }
 
 .portals-secondary-header {
@@ -5539,6 +5578,12 @@ justify-content: flex-start !important;
     background-color: var(--text-muted);
     margin-left: 4px;
     vertical-align: middle;
+}
+
+.portals-folder-note-container {
+    height: 100%;
+    overflow-y: auto;
+    cursor: pointer;
 }
 
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */

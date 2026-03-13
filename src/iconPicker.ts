@@ -19,13 +19,10 @@ export class IconPickerModal extends Modal {
 
         const searchInput = contentEl.createEl('input', {
             type: 'text',
-            placeholder: 'Search icons...'
+            placeholder: 'Search icons...',
+            cls: 'icon-picker-search'
         });
-        searchInput.style.width = '100%';
-        searchInput.style.marginBottom = '16px';
-        searchInput.style.padding = '8px';
-        searchInput.style.borderRadius = '4px';
-        searchInput.style.border = '1px solid var(--background-modifier-border)';
+        
 
         const iconGrid = contentEl.createEl('div', { cls: 'portals-icon-grid' });
 
@@ -48,22 +45,14 @@ export class IconPickerModal extends Modal {
                     const iconEl = iconGrid.createEl('div', { cls: 'icon-item' });
 
                     // Create an <i> element with the Phosphor icon class
-                    const iEl = iconEl.createEl('i', { cls: `ph ph-${name}` });
-                    iEl.style.fontSize = '24px';
+                    const iEl = iconEl.createEl('i', { cls: `ph ph-${name} portals-icon-picker-icon` });
 
-                    const label = iconEl.createEl('span', { cls: 'portals-icon-label', text: name });
+                    iconEl.createEl('span', { cls: 'portals-icon-label', text: name });
                     
 
                     iconEl.addEventListener('click', () => {
                         this.onSubmit(name);
                         this.close();
-                    });
-
-                    iconEl.addEventListener('mouseenter', () => {
-                        iconEl.style.backgroundColor = 'var(--background-modifier-hover)';
-                    });
-                    iconEl.addEventListener('mouseleave', () => {
-                        iconEl.style.backgroundColor = '';
                     });
                 }
             }, 200);

@@ -1,8 +1,6 @@
 import { App, PluginSettingTab, Setting, TFolder, Notice, Modal } from 'obsidian';
 import PortalsPlugin from './main';
 import { IconPickerModal } from './iconPicker';
-import { PortalsView, VIEW_TYPE_PORTALS } from './view';
-import { iconNames } from 'iconMap';
 
 export interface SpaceConfig {
     path: string;
@@ -68,12 +66,12 @@ export class SpacesSettingTab extends PluginSettingTab {
         const scrollTop = containerEl.scrollTop;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'Portals settings' });
+        new Setting(containerEl).setName('Portals settings').setHeading();
 
         // ---- Settings toggles ----
         new Setting(containerEl)
             .setName('Replace file explorer in left sidebar')
-            .setDesc('When enabled, Portals replaces the default file explorer on startup. The file explorer remains accessible via commands or Obsidian Tabs.')
+            .setDesc('Portals replaces the default file explorer on startup. The file explorer remains accessible via commands or obsidian tabs.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.replaceFileExplorer)
                 .onChange(async (value) => {
@@ -168,7 +166,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                         if (!tabs.includes(this.plugin.settings.activeSplitTab)) { 
                             this.plugin.settings.activeSplitTab = tabs[0] || 'recent';
                         }
-                        this.plugin.saveSettings();
+                        void this.plugin.saveSettings();
                         this.display();
                     }).open();
                 }));
@@ -232,7 +230,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             iconBtn.addEventListener('click', () => {
                 new IconPickerModal(this.app, (iconName) => {
                     rootSpace.icon = iconName;
-                    this.plugin.saveSettings().then(() => {
+                    void this.plugin.saveSettings().then(() => {
                         this.display();
                     });
                 }).open();
@@ -273,7 +271,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             });
 
             // Percent sign
-            const percentSpan = colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
+            colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
 
             // Preview swatch
             const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
@@ -288,7 +286,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                 rootSpace.color = rgba;
                 preview.style.setProperty('--preview-color', rgba);
-                this.plugin.saveSettings();
+                void this.plugin.saveSettings();
             };
 
             colorInput.addEventListener('input', updateColor);
@@ -318,7 +316,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                         if (this.plugin.settings.spaces.length === 1 && !this.plugin.settings.pinVaultRoot) {
                             this.plugin.settings.selectedSpace = { path, type };
                         }
-                        this.plugin.saveSettings().then(() => {
+                        void this.plugin.saveSettings().then(() => {
                             this.display();
                         });
                     }).open();
@@ -409,7 +407,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 iconBtn.addEventListener('click', () => {
                     new IconPickerModal(this.app, (iconName) => {
                         portal.icon = iconName;
-                        this.plugin.saveSettings().then(() => {
+                        void this.plugin.saveSettings().then(() => {
                             this.display();
                         });
                     }).open();
@@ -444,7 +442,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     cls: 'portals-opacity-input',
                     attr: { min: '0', max: '100', step: '1' }
                 });
-                const percentSpan = colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
+                colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
 
                
 
@@ -459,7 +457,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                     const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     portal.color = rgba;
                     preview.style.setProperty('--preview-color', rgba);
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                 };
 
                 colorInput.addEventListener('input', updateColor);
@@ -476,14 +474,14 @@ export class SpacesSettingTab extends PluginSettingTab {
                             ? { path: this.plugin.settings.spaces[0].path, type: this.plugin.settings.spaces[0].type }
                             : null;
                     }
-                    this.plugin.saveSettings().then(() => {
+                    void this.plugin.saveSettings().then(() => {
                         this.display();
                     });
                 });
             }
         };
 
-        containerEl.createEl('h3', { text: 'Active portals' });
+        new Setting(containerEl).setName('Active portals').setHeading();
 
         renderSection('Root Folders', rootFolders);
         renderSection('Sub Folders', subFolders);
@@ -492,7 +490,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         containerEl.createEl('hr');
 
         // ---- Backup / Restore ----
-        containerEl.createEl('h3', { text: 'Backup / restore' });
+        new Setting(containerEl).setName('Backup / restore').setHeading();
 
         new Setting(containerEl)
             .setName('Export settings')
@@ -505,7 +503,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             .addButton(button => button.setButtonText('Import').onClick(() => this.importSettings()));
 
         // ---- Maintenance ----
-        containerEl.createEl('h3', { text: 'Maintenance' });
+        new Setting(containerEl).setName('Maintenance').setHeading();
 
         new Setting(containerEl)
             .setName('Clean up dead portals')
@@ -551,7 +549,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
                 this.display();
                 new Notice('Settings imported successfully');
-            } catch (e) {
+            } catch (_e) {
                 new Notice('Invalid settings file');
             }
         };
@@ -575,9 +573,9 @@ export class SpacesSettingTab extends PluginSettingTab {
         onOpen() {
             const { contentEl } = this;
             contentEl.empty();
-            contentEl.createEl('h2', { text: 'Choose side portals' });
+            new Setting(contentEl).setName('Choose side portals').setHeading();
 
-            const desc = contentEl.createEl('p', {
+            contentEl.createEl('p', {
                 text: 'Select which tabs to show in the side panel. At least one must be selected.',
                 cls: 'portals-modal-description'
             });
@@ -601,7 +599,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 });
                 checkbox.checked = this.selectedTabs.has(tab.id);
 
-                const label = checkboxDiv.createEl('label', {
+                checkboxDiv.createEl('label', {
                     text: ` ${tab.name}`,
                     cls: 'portals-checkbox-label',
                     attr: { for: `tab-${tab.id}` }
@@ -672,7 +670,7 @@ class AddPortalModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h2', { text: 'Add a new portal' });
+        new Setting(contentEl).setName('Add a new portal').setHeading();
 
         const tabBar = contentEl.createDiv({ cls: 'add-portal-tab-bar' });
 

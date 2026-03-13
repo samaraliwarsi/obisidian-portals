@@ -26,7 +26,7 @@ export default class PortalsPlugin extends Plugin {
         );
 
         this.addRibbonIcon('folder-tree', 'Open portals', () => {
-            this.activateView();
+            void this.activateView();
         });
 
         this.addSettingTab(new SpacesSettingTab(this.app, this));
@@ -35,7 +35,7 @@ export default class PortalsPlugin extends Plugin {
         if (this.settings.replaceFileExplorer) {
             // Delay a bit to let Obsidian finish initial layout
             setTimeout(() => {
-                this.setupLeftSidebar();
+                void this.setupLeftSidebar();
             }, 200);
         }
 
@@ -112,7 +112,7 @@ export default class PortalsPlugin extends Plugin {
                 return;
             }
         }
-        workspace.revealLeaf(leaf);
+        void workspace.revealLeaf(leaf);
     }
 
     async setupLeftSidebar() {
@@ -126,7 +126,7 @@ export default class PortalsPlugin extends Plugin {
 
         if (existingLeaf) {
             // If one exists, just reveal it
-            workspace.revealLeaf(existingLeaf);
+            void workspace.revealLeaf(existingLeaf);
             return;
         }
 
@@ -134,7 +134,7 @@ export default class PortalsPlugin extends Plugin {
         const newLeaf = workspace.getLeftLeaf(false);
         if (!newLeaf) return;
         await newLeaf.setViewState({ type: VIEW_TYPE_PORTALS, active: true });
-        workspace.revealLeaf(newLeaf);
+        void workspace.revealLeaf(newLeaf);
     }
 
     private refreshAllRecentTabs() {
