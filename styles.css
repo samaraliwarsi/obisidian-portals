@@ -5570,20 +5570,14 @@ body.portals-dragging {
     font-style: italic;
 }
 
-.folder-note-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--text-muted);
-    margin-left: 4px;
-    vertical-align: middle;
-}
-
 .portals-folder-note-container {
     height: 100%;
     overflow-y: auto;
     cursor: pointer;
+}
+
+.folder-icon.has-folder-note i {
+    color: var(--interactive-accent);
 }
 
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */

@@ -559,8 +559,18 @@ export class PortalsView extends ItemView {
                     if (rootColor) {
                         tabBtn.style.setProperty('--split-tab-active-color', rootColor);
                     }
+            } else {
+                // Hover tool tips for inactive (non-mobile)
+                if (!Platform.isMobile) {
+                    const displayName = tabId.charAt(0).toUpperCase() + tabId.slice(1).replace('-',' ');
+                    tabBtn.addEventListener('mouseenter', () => {
+                        this.showTooltip(displayName, tabBtn);
+                    });
+                    tabBtn.addEventListener('mouseleave', () => {
+                        this.hideTooltip(100);
+                    });
                 }
-
+            }
                 tabBtn.addEventListener('click', () => {
                     this.expandPanel();
                     this.plugin.settings.activeSplitTab = tabId;
@@ -1738,15 +1748,14 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
         const iconSpan = summary.createSpan({ cls: 'folder-icon' });
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
+        if (this.plugin.settings.enableFolderNotes && this.hasFolderNote(folder)) {
+            iconSpan.addClass('has-folder-note');
+        }
 
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;
         const nameSpan = summary.createSpan({ text: displayName });
         nameSpan.addClass('portals-item-name');
         summary.dataset.path = folder.path;
-
-        if (this.hasFolderNote(folder)) {
-            summary.createSpan({ cls: 'folder-note-dot '});
-        }
 
         const activePath = this.getActiveFilePath();
         if (activePath) {
