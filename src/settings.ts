@@ -63,13 +63,16 @@ export class SpacesSettingTab extends PluginSettingTab {
 
     // -- migration notice
         private async checkOldFolderAndAddNotice(container: HTMLElement) {
-            const oldFolderPath = '.obsidian/plugins/obsidian-portals/';
+            const configDir = this.app.vault.configDir;
+            const oldFolderPath = `${configDir}/plugins/obsidian-portals/`;
             const exists = await this.app.vault.adapter.exists(oldFolderPath);
             if (exists) {
                 const noticeEl = container.createDiv({ cls: 'portals-migration-notice' });
-                noticeEl.createEl('p', { text: 'Previous version settings detected. You can migrate manually using export/import in settings.' });
+                noticeEl.createEl('p', { 
+                    text: 'Previous version settings detected. You can migrate manually by copying your old data.json or using Export/Import in settings.' 
+                });
                 const link = noticeEl.createEl('a', { 
-                    text: 'View migration guide', 
+                    text: 'View detailed migration guide', 
                     href: 'https://github.com/samaraliwarsi/obsidian-portals/blob/main/MIGRATION.md' 
                 });
                 link.setAttr('target', '_blank');
@@ -80,9 +83,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         const scrollTop = containerEl.scrollTop;
         containerEl.empty();
-
-        new Setting(containerEl).setName('General settings').setHeading();
-
+        
         // Add migration notice container and check asynchronously
         const migrationContainer = containerEl.createDiv();
         this.checkOldFolderAndAddNotice(migrationContainer).catch(err => console.error('Error checking old folder', err));
