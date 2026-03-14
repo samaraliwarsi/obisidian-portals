@@ -66,7 +66,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         const scrollTop = containerEl.scrollTop;
         containerEl.empty();
 
-        new Setting(containerEl).setName('General').setHeading();
+        new Setting(containerEl).setName('General settings').setHeading();
 
         // ---- Settings toggles ----
         new Setting(containerEl)

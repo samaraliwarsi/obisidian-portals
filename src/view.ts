@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, Menu, Notice, Platform, Component } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, Menu, Notice, Platform, Component } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
@@ -140,8 +140,10 @@ export class PortalsView extends ItemView {
         
         //--clean up foldernotes listeners
         if (this.folderNoteEventRefs) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ref can be any event reference type
-            this.folderNoteEventRefs.forEach((ref: any) => this.app.vault.offref(ref));
+            this.folderNoteEventRefs.forEach((ref) => {
+                // @ts-expect-error - ref is an EventRef, but Typsescript doesn't know
+                this.app.vault.offref(ref);
+            });
             this.folderNoteEventRefs = null;
         }
 
@@ -266,7 +268,6 @@ export class PortalsView extends ItemView {
                 if (height <= minHeight + 10) {
                     this.plugin.settings.secondaryPanelCollapsed = true;
                     this.currentSecondaryPanel.classList.add('is-collapsed');
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic height required for collapse
                     this.currentSecondaryPanel.style.height = '42px';
                     if (this.currentSplitter) {
                         this.currentSplitter?.classList.add('is-hidden');
@@ -596,12 +597,10 @@ export class PortalsView extends ItemView {
 
             // Set initial state
             const isCollapsed = this.plugin.settings.secondaryPanelCollapsed;
-            const panelHeight = this.plugin.settings.secondaryPanelHeight || 200;
             if (!this.plugin.settings.sidePanelEnabled) {
                 secondaryPanel.classList.add('is-disabled');
                 splitter.classList.add('is-hidden');
             } else if (isCollapsed) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic height required for collapse
                 secondaryPanel.style.height = '42px';
                 secondaryPanel.classList.add('is-collapsed');
                 splitter.classList.add('is-hidden');
@@ -619,7 +618,6 @@ export class PortalsView extends ItemView {
                 const newCollapsed = !this.plugin.settings.secondaryPanelCollapsed;
                 this.plugin.settings.secondaryPanelCollapsed = newCollapsed;
                 if (newCollapsed) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic height required for collapse
                     secondaryPanel.style.height = '42px';
                     secondaryPanel.classList.add('is-collapsed');
                     splitter.classList.add('is-hidden');
@@ -1403,8 +1401,8 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
     private executeCommand(commandId: string) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing commands API which is not typed
-            (this.app as any).commands.executeCommandById(commandId);
+            // @ts-expect-error - accessing commands API which is not typed
+            this.app.commands.executeCommandById(commandId);
         } catch (err) {
             const message = err instanceof Error ? err.message: String(err);
             console.error(`Command failed: ${commandId}`, err);
@@ -1549,8 +1547,8 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             const leaves = this.app.workspace.getLeavesOfType(type);
             const found = leaves.some(leaf => {
                 const view = leaf.view;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing view.file which is not typed
-                return view && (view as any).file && (view as any).file.path === file.path;
+                // @ts-expect-error - accessing view.file which is not typed
+                return view && view.file && view.file.path === file.path;
             });
             if (found) return true;
         }
@@ -1865,10 +1863,9 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts array of mixed folder/file types
-    private sortFolderChildren(children: any[]): any[] {
-        const folders = children.filter(c => c instanceof TFolder);
-        const files = children.filter(c => c instanceof TFile);
+    private sortFolderChildren(children: TAbstractFile[]): TAbstractFile[] {
+        const folders = children.filter((c): c is TFolder => c instanceof TFolder);
+        const files = children.filter((c): c is TFile => c instanceof TFile);
 
         folders.sort((a, b) => a.name.localeCompare(b.name));
 
