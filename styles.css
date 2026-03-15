@@ -5088,8 +5088,8 @@ color: var(--text-normal);
 
 .open-dot {
 display: inline-block;
-width: 4px;
-height: 4px;
+width: 6px;
+height: 6px;
 border-radius: 50%;
 background-color: var(--interactive-accent);
 box-shadow: 0 0 0 1px var(--background-primary);

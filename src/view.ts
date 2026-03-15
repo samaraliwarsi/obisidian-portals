@@ -137,6 +137,11 @@ export class PortalsView extends ItemView {
             this.vaultEventRef();
             this.vaultEventRef = null;
         }
+
+        if (this.sortableInstance) {
+            this.sortableInstance.destroy();
+            this.sortableInstance = null;
+        }
         
         //--clean up foldernotes listeners
         if (this.folderNoteEventRefs) {
@@ -254,7 +259,6 @@ export class PortalsView extends ItemView {
         this.currentSecondaryPanel.classList.remove('is-collapsed');
         const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
         if (collapseIcon) collapseIcon.textContent = '▼';
-        void this.plugin.saveData(this.plugin.settings);
     };
 
     private handleDragEnd = (e: MouseEvent | TouchEvent) => {
@@ -274,8 +278,8 @@ export class PortalsView extends ItemView {
                     }
                     const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
                     if (collapseIcon) collapseIcon.textContent = '▲';
-                    void this.plugin.saveData(this.plugin.settings);
                 }
+                void this.plugin.saveData(this.plugin.settings);
             }
         }
     };
