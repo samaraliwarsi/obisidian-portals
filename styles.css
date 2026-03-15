@@ -5004,6 +5004,7 @@ width: 100%;
 box-sizing: border-box;
 padding-left: 12px !important;
 padding-right: 12px !important;
+border-radius: 4px;
 }
 
 .folder-summary::-webkit-details-marker {
@@ -5027,7 +5028,7 @@ background-color: var(--background-modifier-hover);
 }
 
 .folder-children {
-margin-left: 24px;
+margin-left: 18px;
 padding-left: 8px;
 border-left: 1px dashed var(--background-modifier-border);
 }
@@ -5087,8 +5088,8 @@ color: var(--text-normal);
 
 .open-dot {
 display: inline-block;
-width: 6px;
-height: 6px;
+width: 4px;
+height: 4px;
 border-radius: 50%;
 background-color: var(--interactive-accent);
 box-shadow: 0 0 0 1px var(--background-primary);
@@ -5113,25 +5114,26 @@ opacity: 0.7;
 /* ----- Floating action buttons ----- */
 
 .portals-floating-btn {
-position: absolute;
-left: 16px;
-z-index: 10;
-width: 32px;
-height: 32px;
-border-radius: 50%;
-background: rgba(128, 128, 128, 0.5);
-backdrop-filter: blur(4px);
-border: none;
-display: flex;
-align-items: center;
-justify-content: center;
-cursor: pointer;
-color: var(--text-muted);
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
-}
+  -webkit-tap-highlight-color: transparent;
+  position: absolute;
+  left: 12px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, 0.5);
+  backdrop-filter: blur(4px);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
+  }
 
-.portals-floating-btn:hover {
+.portals-floating-btn:active {
 background: var(--interactive-accent);
 color: var(--text-on-accent);
 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -5140,6 +5142,22 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 .portals-floating-btn .ph {
 font-size: 18px;
 }
+
+@media (hover: hover) {
+  .portals-floating-btn:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.portals-floating-btn:focus {
+  background: transparent;   /* or your normal background variable */
+  color: var(--text-muted);  /* or your normal text color */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
 
 /* ----- Mobile adjustments ----- */
 
@@ -5232,6 +5250,28 @@ justify-content: flex-start !important;
     box-sizing: border-box;
 }
 
+.portals-split-content .file-item {
+  font-size: 0.9em;
+  padding: 2px 4px;             
+  min-height: 24px;            
+}
+
+
+.portals-split-content .file-icon .ph {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.portals-split-content .folder-summary {
+  font-size: 0.85em;
+  padding: 2px 4px;
+}
+
+.portals-split-content .folder-summary .folder-icon .ph {
+  font-size: 12px;
+}
+
 /* Main panel */
 .portals-main-panel {
     flex: 1;
@@ -5291,7 +5331,6 @@ body.portals-dragging {
     align-items: center;
     background: transparent;
     height: 40px;
-    box-sizing: border-box;
 }
 
 .portals-split-tabs {
@@ -5347,9 +5386,8 @@ body.portals-dragging {
     min-height: 50px;
 }
 
-/* Bottom padding for vault switcher */
-.portals-container {
-    padding-bottom: 4px;
+.portals-split-tab .tab-label.hide {
+    display: none;
 }
 
 /*===END of CSS for Split Panel===*/
@@ -5543,7 +5581,7 @@ body.portals-dragging {
   }
 }
 
-/*===FOLDER NOTE, Bases Styling, Folder Note Dot & User message Display===*/
+/*===FOLDER NOTE, Bases Styling & User message Display===*/
 .portals-embed-link {
     display: inline-block;
     margin: 4px 0;
