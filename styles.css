@@ -5289,7 +5289,6 @@ justify-content: flex-start !important;
 
 .portals-splitter.is-hidden {
     display: none;
-    border: none;
 }
 
 body.portals-dragging {

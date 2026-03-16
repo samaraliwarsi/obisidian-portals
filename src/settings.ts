@@ -29,6 +29,7 @@ export interface SpacesSettings {
     activeSplitTab: string;
     showFolderNotesInTree: boolean;
     enableFolderNotes: boolean;
+    floatingButtonsCollapsed: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     activeSplitTab: 'recent',
     showFolderNotesInTree: false,
     enableFolderNotes: true,
+    floatingButtonsCollapsed: false,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {

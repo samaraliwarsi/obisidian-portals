@@ -36,6 +36,26 @@ export class PortalsView extends ItemView {
     private sortableInstance: Sortable | null = null;
     private folderNoteEventRefs: Array<unknown> | null = null;
     private bookmarksListenerRef: unknown = null;
+    private toggleFloatingButtonsCollapse(e: MouseEvent) {
+        console.log('toggle called, current collapsed:', this.plugin.settings.floatingButtonsCollapsed);
+        e.preventDefault();
+        const el = e.currentTarget as HTMLElement;
+        el.blur();
+        this.plugin.settings.floatingButtonsCollapsed = !this.plugin.settings.floatingButtonsCollapsed;
+        void this.plugin.saveData(this.plugin.settings).then(() => {
+            console.log('saved, new collapsed:', this.plugin.settings.floatingButtonsCollapsed);
+            this.render();
+        });
+    }
+    private collapseAllFolders() {
+        (async () => {
+            const currentSpace = this.plugin.settings.selectedSpace;
+            if (!currentSpace) return;
+            this.plugin.settings.openFolders = [currentSpace.path];
+            await this.plugin.saveData(this.plugin.settings);
+            this.renderContent();
+        })().catch(err => console.error('Error collapsing folders:', err));
+    }
 
     constructor(leaf: WorkspaceLeaf, plugin: PortalsPlugin) {
         super(leaf);
@@ -346,7 +366,8 @@ export class PortalsView extends ItemView {
             splitViewTabs: s.splitViewTabs?.join(',') || '',
             recentFilesList: s.recentFilesList?.join(',') || '',
             showFolderNotesInTree: s.showFolderNotesInTree,
-            enableFolderNotes: s.enableFolderNotes
+            enableFolderNotes: s.enableFolderNotes,
+            floatingButtonsCollapsed: s.floatingButtonsCollapsed,
         });
     }
 
@@ -696,7 +717,13 @@ export class PortalsView extends ItemView {
             }
 
             // Floating buttons (attached to mainPanel)
-            const createFloatingButton = (icon: string, tooltip: string, bottom: number, onClick: (e: MouseEvent) => void) => {
+            const createFloatingButton = (
+                icon: string,
+                tooltip: string,
+                bottom: number,
+                onClick: (e: MouseEvent) => void,
+                onContextMenu?: (e: MouseEvent) => void
+            ) => {
                 const btn = mainPanel.createEl('button', { cls: 'portals-floating-btn' });
                 btn.style.bottom = bottom + 'px';
                 btn.empty();
@@ -709,112 +736,117 @@ export class PortalsView extends ItemView {
                     e.stopPropagation();
                     const el = e.currentTarget as HTMLElement;
                     el.blur();
-                    el.style.display = 'none'
+                    el.style.display = 'none';
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                             el.style.display = '';
-                        })
+                        });
                     });
                     onClick(e);
                 });
 
-                btn.addEventListener('contextmenu', (e) =>{
+                btn.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     const el = e.currentTarget as HTMLElement;
                     el.blur();
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() =>{                            
-                        });
-                    });
+                    if ((el as any).__contextmenuFired) return;
+                    (el as any).__contextmenuFired = true;
+                    setTimeout(() => delete (el as any).__contextmenuFired, 300);
+                    if (onContextMenu) {
+                        onContextMenu(e);
+                    }
                 });
                 return btn;
             };
 
-            createFloatingButton('file-plus', 'New note', 136, () => {
-                (async () => {
-                    const currentSpace = this.plugin.settings.spaces.find(s => 
-                        s.path === this.plugin.settings.selectedSpace?.path && 
-                        s.type === this.plugin.settings.selectedSpace?.type
-                    );
-                    if (!currentSpace || currentSpace.type !== 'folder') {
-                        new Notice('Please select a folder space first.');
-                        return;
-                    }
-                    const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
-                    if (!(folder instanceof TFolder)) {
-                        new Notice('Selected space is not a valid folder.');
-                        return;
-                    }
-                    await this.newNoteInFolder(folder);
-                })().catch(err => console.error('Error creating note:', err));
-            });
+            if (this.plugin.settings.floatingButtonsCollapsed) {
+                createFloatingButton('stack-simple', 'Collapse/ Unfold', 10,
+                    () => this.collapseAllFolders(),
+                    (e: MouseEvent) => this.toggleFloatingButtonsCollapse(e)
+                );
+            } else {
+                // Expanded mode: all four buttons
+                createFloatingButton('file-plus', 'New note', 136, () => {
+                    (async () => {
+                        const currentSpace = this.plugin.settings.spaces.find(s => 
+                            s.path === this.plugin.settings.selectedSpace?.path && 
+                            s.type === this.plugin.settings.selectedSpace?.type
+                        );
+                        if (!currentSpace || currentSpace.type !== 'folder') {
+                            new Notice('Please select a folder space first.');
+                            return;
+                        }
+                        const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                        if (!(folder instanceof TFolder)) {
+                            new Notice('Selected space is not a valid folder.');
+                            return;
+                        }
+                        await this.newNoteInFolder(folder);
+                    })().catch(err => console.error('Error creating note:', err));
+                });
 
-            createFloatingButton('folder-simple-plus', 'New folder', 94, () => {
-                (async () => {
-                    const currentSpace = this.plugin.settings.spaces.find(s => 
-                        s.path === this.plugin.settings.selectedSpace?.path && 
-                        s.type === this.plugin.settings.selectedSpace?.type
-                    );
-                    if (!currentSpace || currentSpace.type !== 'folder') {
-                        new Notice('Please select a folder space first.');
-                        return;
-                    }
-                    const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
-                    if (!(folder instanceof TFolder)) {
-                        new Notice('Selected space is not a valid folder.');
-                        return;
-                    }
-                    await this.newFolderInFolder(folder);
-                })().catch(err => console.error('Error creating folder:', err));
-            });
+                createFloatingButton('folder-simple-plus', 'New folder', 94, () => {
+                    (async () => {
+                        const currentSpace = this.plugin.settings.spaces.find(s => 
+                            s.path === this.plugin.settings.selectedSpace?.path && 
+                            s.type === this.plugin.settings.selectedSpace?.type
+                        );
+                        if (!currentSpace || currentSpace.type !== 'folder') {
+                            new Notice('Please select a folder space first.');
+                            return;
+                        }
+                        const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                        if (!(folder instanceof TFolder)) {
+                            new Notice('Selected space is not a valid folder.');
+                            return;
+                        }
+                        await this.newFolderInFolder(folder);
+                    })().catch(err => console.error('Error creating folder:', err));
+                });
 
-            createFloatingButton('caret-circle-up-down', 'Sort', 52, (e: MouseEvent) => {
-                const menu = new Menu();
-                const setSort = (by: 'name' | 'created' | 'modified', order: 'asc' | 'desc') => {
-                    this.plugin.settings.sortBy = by;
-                    this.plugin.settings.sortOrder = order;
-                    void this.plugin.saveData(this.plugin.settings);
-                    this.renderContent();
-                };
-                menu.addItem(item => item
-                    .setTitle('Name ascending')
-                    .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'asc')
-                    .onClick(() => setSort('name', 'asc')));
-                menu.addItem(item => item
-                    .setTitle('Name descending')
-                    .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'desc')
-                    .onClick(() => setSort('name', 'desc')));
-                menu.addSeparator();
-                menu.addItem(item => item
-                    .setTitle('Created (oldest first)')
-                    .setChecked(this.plugin.settings.sortBy === 'created' && this.plugin.settings.sortOrder === 'asc')
-                    .onClick(() => setSort('created', 'asc')));
-                menu.addItem(item => item
-                    .setTitle('Created (newest first)')
-                    .setChecked(this.plugin.settings.sortBy === 'created' && this.plugin.settings.sortOrder === 'desc')
-                    .onClick(() => setSort('created', 'desc')));
-                menu.addSeparator();
-                menu.addItem(item => item
-                    .setTitle('Modified (oldest first)')
-                    .setChecked(this.plugin.settings.sortBy === 'modified' && this.plugin.settings.sortOrder === 'asc')
-                    .onClick(() => setSort('modified', 'asc')));
-                menu.addItem(item => item
-                    .setTitle('Modified (newest first)')
-                    .setChecked(this.plugin.settings.sortBy === 'modified' && this.plugin.settings.sortOrder === 'desc')
-                    .onClick(() => setSort('modified', 'desc')));
-                menu.showAtPosition({ x: e.clientX, y: e.clientY });
-            });
+                createFloatingButton('caret-circle-up-down', 'Sort', 52, (e: MouseEvent) => {
+                    const menu = new Menu();
+                    const setSort = (by: 'name' | 'created' | 'modified', order: 'asc' | 'desc') => {
+                        this.plugin.settings.sortBy = by;
+                        this.plugin.settings.sortOrder = order;
+                        void this.plugin.saveData(this.plugin.settings);
+                        this.renderContent();
+                    };
+                    menu.addItem(item => item
+                        .setTitle('Name ascending')
+                        .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'asc')
+                        .onClick(() => setSort('name', 'asc')));
+                    menu.addItem(item => item
+                        .setTitle('Name descending')
+                        .setChecked(this.plugin.settings.sortBy === 'name' && this.plugin.settings.sortOrder === 'desc')
+                        .onClick(() => setSort('name', 'desc')));
+                    menu.addSeparator();
+                    menu.addItem(item => item
+                        .setTitle('Created (oldest first)')
+                        .setChecked(this.plugin.settings.sortBy === 'created' && this.plugin.settings.sortOrder === 'asc')
+                        .onClick(() => setSort('created', 'asc')));
+                    menu.addItem(item => item
+                        .setTitle('Created (newest first)')
+                        .setChecked(this.plugin.settings.sortBy === 'created' && this.plugin.settings.sortOrder === 'desc')
+                        .onClick(() => setSort('created', 'desc')));
+                    menu.addSeparator();
+                    menu.addItem(item => item
+                        .setTitle('Modified (oldest first)')
+                        .setChecked(this.plugin.settings.sortBy === 'modified' && this.plugin.settings.sortOrder === 'asc')
+                        .onClick(() => setSort('modified', 'asc')));
+                    menu.addItem(item => item
+                        .setTitle('Modified (newest first)')
+                        .setChecked(this.plugin.settings.sortBy === 'modified' && this.plugin.settings.sortOrder === 'desc')
+                        .onClick(() => setSort('modified', 'desc')));
+                    menu.showAtPosition({ x: e.clientX, y: e.clientY });
+                });
 
-            createFloatingButton('stack', 'Collapse all', 10, () => {
-                (async () => {
-                    const currentSpace = this.plugin.settings.selectedSpace;
-                    if (!currentSpace) return;
-                    this.plugin.settings.openFolders = [currentSpace.path];
-                    await this.plugin.saveData(this.plugin.settings);
-                    this.renderContent();
-                })().catch(err => console.error('Error collapsing folders:', err));
-            });
-
+                // Collapse button with contextmenu toggling
+                createFloatingButton('stack', 'Collapse/ Fold', 10,
+                    () => this.collapseAllFolders(),
+                    (e: MouseEvent) => this.toggleFloatingButtonsCollapse(e)
+                );
+            }
         } catch (e) {
             console.error('Portals render error:', e);
         }
