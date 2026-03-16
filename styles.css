@@ -4903,11 +4903,11 @@ color: var(--text-normal);
 .portals-tab.is-active {
 background: transparent;
 color: var(--text-normal);
-border-bottom-color: var(--interactive-accent); 
+border-bottom-color: var(--tab-active-color, var(--interactive-accent)); 
 }
 
 .portals-tab-pinned {
-border-left: 2px solid var(--interactive-accent);
+border-left: 2px solid var(--tab-pinner-color, transparent);
 }
 
 .portals-tab-pinned:not(.is-active) {
@@ -5352,7 +5352,7 @@ body.portals-dragging {
 .portals-split-tab.is-active {
   background: transparent;
   color: var(--text-normal);
-  border-bottom-color: var(--interactive-accent)
+  border-bottom-color: var(--split-tab-active-color ,var(--interactive-accent));
 }
 
 .portals-split-tab i {
