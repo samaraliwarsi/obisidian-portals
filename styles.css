@@ -5289,6 +5289,7 @@ justify-content: flex-start !important;
 
 .portals-splitter.is-hidden {
     display: none;
+    border: none;
 }
 
 body.portals-dragging {
@@ -5564,6 +5565,11 @@ body.portals-dragging {
     height: 40px;
     /* Obsidian likely sets font-size automatically, but you can add: */
     font-size: 1.2em;
+  }
+
+  .portals-secondary-panel.is-collapsed {
+    height: 50px;
+    border-bottom: none;
   }
 }
 
