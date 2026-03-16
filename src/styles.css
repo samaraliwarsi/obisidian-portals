@@ -5133,31 +5133,18 @@ opacity: 0.7;
   transition: background-color 0.1s, color 0.1s, box-shadow 0.1s;
   }
 
-.portals-floating-btn:active {
-background: var(--interactive-accent);
-color: var(--text-on-accent);
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
 .portals-floating-btn .ph {
 font-size: 18px;
 }
 
-@media (hover: hover) {
-  .portals-floating-btn:hover {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
+.portals-floating-btn:focus,
+.portals-floating-btn:focus-visible,
+.portals-floating-btn:active {
+    outline: none;
+    background: rgba(128, 128, 128, 0.5);  /* same as normal */
+    color: var(--text-muted);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
-
-.portals-floating-btn:focus {
-  background: transparent;   /* or your normal background variable */
-  color: var(--text-muted);  /* or your normal text color */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  outline: none;
-}
-
 
 /* ----- Mobile adjustments ----- */
 
@@ -5313,7 +5300,7 @@ body.portals-dragging {
 .portals-secondary-panel {
     flex-shrink: 0;
     overflow: hidden;
-    border-bottom: 1.5px solid var(--background-modifier-border);
+    border-bottom: 1px solid var(--background-modifier-border);
     border-top: none;
 }
 

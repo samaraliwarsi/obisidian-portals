@@ -705,7 +705,28 @@ export class PortalsView extends ItemView {
                     btn.addEventListener('mouseenter', () => this.showTooltip(tooltip, btn));
                     btn.addEventListener('mouseleave', () => this.hideTooltip(100));
                 }
-                btn.addEventListener('click', onClick);
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const el = e.currentTarget as HTMLElement;
+                    el.blur();
+                    el.style.display = 'none'
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            el.style.display = '';
+                        })
+                    });
+                    onClick(e);
+                });
+
+                btn.addEventListener('contextmenu', (e) =>{
+                    e.preventDefault();
+                    const el = e.currentTarget as HTMLElement;
+                    el.blur();
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() =>{                            
+                        });
+                    });
+                });
                 return btn;
             };
 
