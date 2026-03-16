@@ -7,6 +7,7 @@ export interface SpaceConfig {
     type: 'folder' | 'tag';
     icon: string;
     color: string;
+    groupTags?: string[];
 }
 
 export interface SpacesSettings {
@@ -768,6 +769,58 @@ class AddPortalModal extends Modal {
                 });
             }
         }
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
+// ==================== GROUP TAGS MODAL ====================
+export class GroupTagsModal extends Modal {
+    private selectedTags: Set<string>;
+
+    constructor(
+        app: App,
+        private plugin: PortalsPlugin,
+        private portal: SpaceConfig,
+        private onSave: (tags: string[]) => void
+    ) {
+        super(app);
+        this.selectedTags = new Set(portal.groupTags || []);
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: 'Select group tags' });
+
+        // Get all tags from metadata cache
+        const tagsObj = (this.app.metadataCache as any).getTags();
+        const allTags = Object.keys(tagsObj).map(t => t.slice(1)).sort();
+
+        const container = contentEl.createDiv({ cls: 'portals-checkbox-container' });
+        allTags.forEach(tag => {
+            const div = container.createDiv({ cls: 'portals-checkbox-item' });
+            const checkbox = div.createEl('input', { type: 'checkbox', value: tag });
+            checkbox.checked = this.selectedTags.has(tag);
+            div.createEl('span', { text: tag });
+            checkbox.addEventListener('change', (e) => {
+                if ((e.target as HTMLInputElement).checked) {
+                    this.selectedTags.add(tag);
+                } else {
+                    this.selectedTags.delete(tag);
+                }
+            });
+        });
+
+        const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
+        buttonDiv.createEl('button', { text: 'Cancel' }).onclick = () => this.close();
+        const saveBtn = buttonDiv.createEl('button', { text: 'Save', cls: 'mod-cta' });
+        saveBtn.onclick = () => {
+            this.onSave(Array.from(this.selectedTags));
+            this.close();
+        };
     }
 
     onClose() {

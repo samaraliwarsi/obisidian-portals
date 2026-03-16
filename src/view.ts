@@ -3,6 +3,8 @@ import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
 import { MarkdownRenderer } from 'obsidian';
+import { GroupTagsModal } from './settings'
+
 
 interface BookmarkItem {
     title?: string;
@@ -47,6 +49,7 @@ export class PortalsView extends ItemView {
             this.render();
         });
     }
+
     private collapseAllFolders() {
         (async () => {
             const currentSpace = this.plugin.settings.selectedSpace;
@@ -351,7 +354,7 @@ export class PortalsView extends ItemView {
     private getSettingsHash(): string {
         const s = this.plugin.settings;
         return JSON.stringify({
-            spaces: s.spaces.map(sp => `${sp.type}:${sp.path}|${sp.icon}|${sp.color}`).join(','),
+            spaces: s.spaces.map(sp => `${sp.type}:${sp.path}|${sp.icon}|${sp.color}|${sp.groupTags?.join(',') || ''}`).join(','),
             openFolders: s.openFolders.join(','),
             selectedSpace: s.selectedSpace ? `${s.selectedSpace.type}:${s.selectedSpace.path}` : '',
             filePaneColorStyle: s.filePaneColorStyle,
@@ -712,7 +715,7 @@ export class PortalsView extends ItemView {
                 } else {
                     const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
                     this.applySpaceBackground(spaceContent, selectedSpace.color);
-                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
+                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags);
                 }
             }
 
@@ -785,24 +788,31 @@ export class PortalsView extends ItemView {
                     })().catch(err => console.error('Error creating note:', err));
                 });
 
-                createFloatingButton('folder-simple-plus', 'New folder', 94, () => {
-                    (async () => {
-                        const currentSpace = this.plugin.settings.spaces.find(s => 
-                            s.path === this.plugin.settings.selectedSpace?.path && 
-                            s.type === this.plugin.settings.selectedSpace?.type
-                        );
-                        if (!currentSpace || currentSpace.type !== 'folder') {
-                            new Notice('Please select a folder space first.');
-                            return;
-                        }
-                        const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
-                        if (!(folder instanceof TFolder)) {
-                            new Notice('Selected space is not a valid folder.');
-                            return;
-                        }
-                        await this.newFolderInFolder(folder);
-                    })().catch(err => console.error('Error creating folder:', err));
-                });
+                // second button: folder or filter
+                const currentSpace = this.plugin.settings.spaces.find(s =>
+                    s.path === this.plugin.settings.selectedSpace?.path &&
+                    s.type === this.plugin.settings.selectedSpace?.type
+                );
+
+                if (currentSpace && currentSpace.type === 'folder') {
+                    createFloatingButton('folder-simple-plus', 'New folder', 94, () => {
+                        (async () => {
+                            const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                            if (!(folder instanceof TFolder)) {
+                                new Notice('Selected space is not a valid folder.');
+                                return;
+                            }
+                            await this.newFolderInFolder(folder);
+                        })().catch(err => console.error('Error creating folder:', err));
+                    });
+                } else if (currentSpace && currentSpace.type === 'tag') {
+                    createFloatingButton('funnel-simple', 'Group by tags', 94, (e) => {
+                        new GroupTagsModal(this.app, this.plugin, currentSpace, (tags) => {
+                            currentSpace.groupTags = tags;
+                            this.plugin.saveSettings().then(() => this.render());
+                        }).open();
+                    });
+                }
 
                 createFloatingButton('caret-circle-up-down', 'Sort', 52, (e: MouseEvent) => {
                     const menu = new Menu();
@@ -1261,7 +1271,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         } else {
             const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
             this.applySpaceBackground(spaceContent, selectedSpace.color);
-            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon);
+            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags);
         }
     }
 
@@ -1301,7 +1311,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         return file.name;
     }
 
-    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string) {
+    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string, groupTags?: string[]) {
         const tag = '#' + tagName;
         const allFiles = this.app.vault.getMarkdownFiles();
         const taggedFiles = allFiles.filter(file => {
@@ -1309,61 +1319,42 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             return cache?.tags?.some(t => t.tag === tag) || cache?.frontmatter?.tags?.includes(tagName);
         });
 
-        const sortBy = this.plugin.settings.sortBy;
-        const sortOrder = this.plugin.settings.sortOrder;
-        taggedFiles.sort((a: TFile, b: TFile) => {
-            let aVal: string | number, bVal: string | number;
-            switch (sortBy) {
-                case 'name':
-                    aVal = a.name;
-                    bVal = b.name;
-                    break;
-                case 'created':
-                    aVal = a.stat.ctime;
-                    bVal = b.stat.ctime;
-                    break;
-                case 'modified':
-                    aVal = a.stat.mtime;
-                    bVal = b.stat.mtime;
-                    break;
-                default:
-                    aVal = a.name;
-                    bVal = b.name;
-            }
-            if (sortOrder === 'asc') {
-                if (aVal < bVal) return -1;
-                if (aVal > bVal) return 1;
-                return 0;
-            } else {
-                if (aVal > bVal) return -1;
-                if (aVal < bVal) return 1;
-                return 0;
-            }
-        });
-
         if (taggedFiles.length === 0) {
             container.createEl('p', { text: 'No files with this tag.' });
             return;
         }
 
-        const details = container.createEl('details', { cls: 'folder-details' });
-        details.setAttr('open', 'true');
+        // Sort helper (already in your method)
+        const sortFiles = (files: TFile[]) => files.sort((a, b) => {
+            const sortBy = this.plugin.settings.sortBy;
+            const sortOrder = this.plugin.settings.sortOrder;
+            let aVal: string | number, bVal: string | number;
+            switch (sortBy) {
+                case 'name': aVal = a.name; bVal = b.name; break;
+                case 'created': aVal = a.stat.ctime; bVal = b.stat.ctime; break;
+                case 'modified': aVal = a.stat.mtime; bVal = b.stat.mtime; break;
+                default: aVal = a.name; bVal = b.name;
+            }
+            if (sortOrder === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+            else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        });
 
-        const summary = details.createEl('summary', { cls: 'folder-summary' });
-        const iconSpan = summary.createSpan({ cls: 'folder-icon' });
-        iconSpan.createEl('i', { cls: `ph ph-${iconName || 'tag'}` });
-        const nameSpan = summary.createSpan({ text: '#' + tagName });
-        nameSpan.addClass('portals-item-name');
+        // Create main details element for the tag
+        const mainDetails = container.createEl('details', { cls: 'folder-details' });
+        mainDetails.setAttr('open', 'true');
+        const mainSummary = mainDetails.createEl('summary', { cls: 'folder-summary' });
+        const mainIconSpan = mainSummary.createSpan({ cls: 'folder-icon' });
+        mainIconSpan.createEl('i', { cls: `ph ph-${iconName || 'tag'}` });
+        mainSummary.createSpan({ text: '#' + tagName }).addClass('portals-item-name');
+        const childrenContainer = mainDetails.createDiv({ cls: 'folder-children' });
 
-        const childrenContainer = details.createDiv({ cls: 'folder-children' });
-
-        for (const file of taggedFiles) {
-            const fileEl = childrenContainer.createDiv({ cls: 'file-item' });
-            const fileIcon = fileEl.createSpan({ cls: 'file-icon' });
-            fileIcon.createEl('i', { cls: 'ph ph-file' });
+        // Local function to create a file item (copied from your existing loop)
+        const createFileItem = (file: TFile, parent: HTMLElement) => {
+            const fileEl = parent.createDiv({ cls: 'file-item' });
+            const iconSpan = fileEl.createSpan({ cls: 'file-icon' });
+            iconSpan.createEl('i', { cls: 'ph ph-file' });
             const nameSpan = fileEl.createSpan({ text: this.getDisplayName(file) });
             nameSpan.addClass('portals-item-name');
-
             fileEl.dataset.path = file.path;
 
             if (this.isFileOpen(file)) {
@@ -1397,6 +1388,56 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                 e.preventDefault();
                 this.showFileContextMenu(e, file, fileEl);
             });
+        };
+
+        // If no groups, just list all files under the main tag
+        if (!groupTags || groupTags.length === 0) {
+            for (const file of sortFiles(taggedFiles)) {
+                createFileItem(file, childrenContainer);
+            }
+            return;
+        }
+
+        // Build groups map
+        const groups = new Map<string, TFile[]>();
+        groupTags.forEach(t => groups.set(t, []));
+        const ungrouped: TFile[] = [];
+
+        for (const file of taggedFiles) {
+            const cache = this.app.metadataCache.getFileCache(file);
+            const fileTags = new Set([
+                ...(cache?.tags?.map(t => t.tag.slice(1)) || []),
+                ...(cache?.frontmatter?.tags || [])
+            ]);
+
+            let hasGroup = false;
+            for (const gTag of groupTags) {
+                if (fileTags.has(gTag)) {
+                    groups.get(gTag)!.push(file);
+                    hasGroup = true;
+                }
+            }
+            if (!hasGroup) ungrouped.push(file);
+        }
+
+        // Render each group as a nested details element (always open)
+        for (const [gTag, files] of groups.entries()) {
+            if (files.length === 0) continue;
+            const groupDetails = childrenContainer.createEl('details', { cls: 'folder-details' });
+            groupDetails.open = true; // always open
+            const summary = groupDetails.createEl('summary', { cls: 'folder-summary' });
+            const iconSpan = summary.createSpan({ cls: 'folder-icon' });
+            iconSpan.createEl('i', { cls: 'ph ph-tag' });
+            summary.createSpan({ text: '#' + gTag }).addClass('portals-item-name');
+            const groupChildren = groupDetails.createDiv({ cls: 'folder-children' });
+            for (const file of sortFiles(files)) {
+                createFileItem(file, groupChildren);
+            }
+        }
+
+        // Render ungrouped files directly under main tag
+        for (const file of sortFiles(ungrouped)) {
+            createFileItem(file, childrenContainer);
         }
     }
 
