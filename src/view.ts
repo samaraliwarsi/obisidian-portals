@@ -775,16 +775,23 @@ export class PortalsView extends ItemView {
                             s.path === this.plugin.settings.selectedSpace?.path && 
                             s.type === this.plugin.settings.selectedSpace?.type
                         );
-                        if (!currentSpace || currentSpace.type !== 'folder') {
+
+                        if (!currentSpace) {
                             new Notice('Please select a folder space first.');
                             return;
                         }
-                        const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
-                        if (!(folder instanceof TFolder)) {
-                            new Notice('Selected space is not a valid folder.');
+
+                        if (currentSpace.type === 'folder') {
+                            const folder = this.app.vault.getAbstractFileByPath(currentSpace.path);
+                            if (!(folder instanceof TFolder)) {
+                                new Notice('Selected space is not a valid folder.');
                             return;
+                            }
+                            await this.newNoteInFolder(folder);
+                        } else if (currentSpace.type === 'tag') {
+                            await this.newNoteInTagSpace(currentSpace.path);
                         }
-                        await this.newNoteInFolder(folder);
+
                     })().catch(err => console.error('Error creating note:', err));
                 });
 
@@ -806,11 +813,31 @@ export class PortalsView extends ItemView {
                         })().catch(err => console.error('Error creating folder:', err));
                     });
                 } else if (currentSpace && currentSpace.type === 'tag') {
-                    createFloatingButton('funnel-simple', 'Group by tags', 94, (e) => {
+                    // compute tags that co-occuer with main tag
+                    const mainTag = currentSpace.path;
+                    const allFiles = this.app.vault.getMarkdownFiles();
+                    const filesWithMainTag = allFiles.filter(file => {
+                        const cache = this.app.metadataCache.getFileCache(file);
+
+                        return cache?.tags?.some(t => t.tag === '#' + mainTag) || cache?.frontmatter?.tags?.includes(mainTag);
+                    });
+                    const tagSet = new Set<string>();
+                    filesWithMainTag.forEach(file => {
+                        const cache = this.app.metadataCache.getFileCache(file);
+                        const fileTags = [
+                            ...(cache?.tags?.map(t => t.tag.slice(1)) || []),
+                            ...(cache?.frontmatter?.tags || [])
+                        ];
+                        fileTags.forEach(t => tagSet.add(t));
+                    });
+                    tagSet.delete(mainTag)
+                    const relevantTags = Array.from(tagSet).sort();
+
+                    createFloatingButton('funnel-simple', 'Tag groups', 94, (e) => {
                         new GroupTagsModal(this.app, this.plugin, currentSpace, (tags) => {
                             currentSpace.groupTags = tags;
                             this.plugin.saveSettings().then(() => this.render());
-                        }).open();
+                        }, relevantTags).open();
                     });
                 }
 
@@ -1427,7 +1454,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             groupDetails.open = true; // always open
             const summary = groupDetails.createEl('summary', { cls: 'folder-summary' });
             const iconSpan = summary.createSpan({ cls: 'folder-icon' });
-            iconSpan.createEl('i', { cls: 'ph ph-tag' });
+            iconSpan.createEl('i', { cls: 'ph ph-tag-simple' });
             summary.createSpan({ text: '#' + gTag }).addClass('portals-item-name');
             const groupChildren = groupDetails.createDiv({ cls: 'folder-children' });
             for (const file of sortFiles(files)) {
@@ -1746,6 +1773,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
     }
 
 
+    // New Note creation in Folder space
     private async newNoteInFolder(folder: TFolder) {
         const defaultName = 'Untitled.md';
         const basePath = folder.path === '/' ? '' : folder.path;
@@ -1772,6 +1800,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         }
     }
 
+    // New Folder Creation in Folder space
     private async newFolderInFolder(parent: TFolder) {
         const defaultName = 'New Folder';
         const basePath = parent.path === '/' ? '' : parent.path;
@@ -1797,6 +1826,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         }
     }
 
+    // New Canvas creation in Folder Space
     private async newCanvasInFolder(folder: TFolder) {
         const defaultName = 'Untitled.canvas';
         let candidate = `${folder.path}/${defaultName}`;
@@ -1812,6 +1842,40 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             new Notice(`Failed to create canvas: ${message}`);
+        }
+    }
+
+    // New Note Creation in Tag Space
+    private async newNoteInTagSpace(tagName: string) {
+        const defaultName = 'Untitled.md'
+        let candidate = defaultName;
+        let counter = 1;
+        while (this.app.vault.getAbstractFileByPath(candidate)) {
+            candidate = `Untitled ${counter}.md`;
+            counter++;
+        }
+        try {
+            const newFile = await this.app.vault.create(candidate, '');
+            // add the tag to frontmatter
+            await this.app.fileManager.processFrontMatter(newFile, (frontmatter) => {
+                if (!frontmatter.tags) {
+                    frontmatter.tags = [tagName];
+                } else if (Array.isArray(frontmatter.tags)) {
+                    if (!frontmatter.tags.includes(tagName)) {
+                        frontmatter.tags.push(tagName);
+                    }
+                } else {
+                    // if tags is a string, convert to array
+                    const existing = frontmatter.tags
+                    frontmatter.tags = [existing, tagName];
+                }
+            });
+            await this.app.workspace.getLeaf().openFile(newFile);
+            this.renderContent();
+            this.triggerRenameOnPath(newFile.path);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice('Failed to create note: ${message}');
         }
     }
 

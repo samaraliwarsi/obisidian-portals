@@ -784,7 +784,8 @@ export class GroupTagsModal extends Modal {
         app: App,
         private plugin: PortalsPlugin,
         private portal: SpaceConfig,
-        private onSave: (tags: string[]) => void
+        private onSave: (tags: string[]) => void,
+        private availableTags: string[]
     ) {
         super(app);
         this.selectedTags = new Set(portal.groupTags || []);
@@ -795,12 +796,8 @@ export class GroupTagsModal extends Modal {
         contentEl.empty();
         contentEl.createEl('h2', { text: 'Select group tags' });
 
-        // Get all tags from metadata cache
-        const tagsObj = (this.app.metadataCache as any).getTags();
-        const allTags = Object.keys(tagsObj).map(t => t.slice(1)).sort();
-
         const container = contentEl.createDiv({ cls: 'portals-checkbox-container' });
-        allTags.forEach(tag => {
+        this.availableTags.forEach(tag => {
             const div = container.createDiv({ cls: 'portals-checkbox-item' });
             const checkbox = div.createEl('input', { type: 'checkbox', value: tag });
             checkbox.checked = this.selectedTags.has(tag);
@@ -813,7 +810,6 @@ export class GroupTagsModal extends Modal {
                 }
             });
         });
-
         const buttonDiv = contentEl.createDiv({ cls: 'modal-button-container' });
         buttonDiv.createEl('button', { text: 'Cancel' }).onclick = () => this.close();
         const saveBtn = buttonDiv.createEl('button', { text: 'Save', cls: 'mod-cta' });
