@@ -54,9 +54,20 @@ export class PortalsView extends ItemView {
         (async () => {
             const currentSpace = this.plugin.settings.selectedSpace;
             if (!currentSpace) return;
+
+            if (currentSpace.type === 'folder') {
             this.plugin.settings.openFolders = [currentSpace.path];
             await this.plugin.saveData(this.plugin.settings);
             this.renderContent();
+        } else if (currentSpace.type === 'tag') {
+            const spaceContent = this.containerEl.querySelector('.portals-space-content');
+            if (spaceContent) {
+                const allDetails =spaceContent.querySelectorAll('details')
+                for (let i = 1; i < allDetails.length; i++) {
+                    (allDetails[i] as HTMLDetailsElement).open =false;
+                }
+            }
+        }
         })().catch(err => console.error('Error collapsing folders:', err));
     }
 
@@ -836,6 +847,15 @@ export class PortalsView extends ItemView {
                     createFloatingButton('funnel-simple', 'Tag groups', 94, (e) => {
                         new GroupTagsModal(this.app, this.plugin, currentSpace, (tags) => {
                             currentSpace.groupTags = tags;
+
+                            // cleanup expandedGroups for this space
+                            const expanded = this.plugin.settings.expandedGroups[currentSpace.path];
+                            if (expanded) {
+                                const validExpanded = expanded.filter(t => currentSpace.groupTags?.includes(t));
+                                if (validExpanded.length !== expanded.length) {
+                                    this.plugin.settings.expandedGroups[currentSpace.path] = validExpanded;
+                                }
+                            }
                             this.plugin.saveSettings().then(() => this.render());
                         }, relevantTags).open();
                     });
@@ -1451,7 +1471,12 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         for (const [gTag, files] of groups.entries()) {
             if (files.length === 0) continue;
             const groupDetails = childrenContainer.createEl('details', { cls: 'folder-details' });
-            groupDetails.open = true; // always open
+            const saveExpanded = this.plugin.settings.expandedGroups[tagName] || [];
+            if (saveExpanded.includes(gTag)) {
+                groupDetails.open = true;
+            } else {
+                groupDetails.open = false; // default closed
+            }
             const summary = groupDetails.createEl('summary', { cls: 'folder-summary' });
             const iconSpan = summary.createSpan({ cls: 'folder-icon' });
             iconSpan.createEl('i', { cls: 'ph ph-tag-simple' });
@@ -1460,6 +1485,20 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             for (const file of sortFiles(files)) {
                 createFileItem(file, groupChildren);
             }
+
+            groupDetails.addEventListener('toggle', () => {
+                const isOpen = groupDetails.open;
+                let expanded = this.plugin.settings.expandedGroups[tagName] || [];
+                if (isOpen) {
+                    if (!expanded.includes(gTag)) {
+                        expanded = [...expanded, gTag];
+                    }
+                } else {
+                    expanded = expanded.filter(t => t !== gTag);
+                }
+                this.plugin.settings.expandedGroups[tagName] = expanded;
+                void this.plugin.saveSettings(); // no re‑render because hash unchanged
+            });
         }
 
         // Render ungrouped files directly under main tag

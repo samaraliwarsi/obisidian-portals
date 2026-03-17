@@ -31,6 +31,7 @@ export interface SpacesSettings {
     showFolderNotesInTree: boolean;
     enableFolderNotes: boolean;
     floatingButtonsCollapsed: boolean;
+    expandedGroups: Record<string, string[]>;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     showFolderNotesInTree: false,
     enableFolderNotes: true,
     floatingButtonsCollapsed: false,
+    expandedGroups: {},
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
