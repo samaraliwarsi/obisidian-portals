@@ -252,50 +252,63 @@ export class PortalsView extends ItemView {
         e.preventDefault();
     };
 
-    private handleDragMove = (e: MouseEvent | TouchEvent) => {
-        if (!this.isDraggingSplitter || !this.currentSecondaryPanel || !this.currentSplitter || !this.plugin.settings.sidePanelEnabled) return;
+    private dragMoveRaf: number | null = null;
+    private lastClientY = 0;
+    private lastRect: DOMRect | null = null;
 
+    private handleDragMove = (e: MouseEvent | TouchEvent) => {
+        if (!this.isDraggingSplitter || !this.plugin.settings.sidePanelEnabled) return;
         e.preventDefault();
 
-        const splitContainer = this.currentSecondaryPanel.parentElement?.parentElement;
+        const secondaryPanel = this.currentSecondaryPanel;
+        const splitter = this.currentSplitter;
+        if (!secondaryPanel || !splitter) return;
+
+        const splitContainer = secondaryPanel.parentElement?.parentElement;
         if (!splitContainer) return;
 
         const rect = splitContainer.getBoundingClientRect();
-        let clientY: number;
+        const clientY = e instanceof TouchEvent ? e.touches[0]?.clientY : e.clientY;
+        if (clientY === undefined) return;
 
-        if (e instanceof TouchEvent) {
-            const touch = e.touches[0];
-            if (!touch) return;
-            clientY = touch.clientY;
-        } else {
-            clientY = e.clientY;
-        }
-
+        // --- Synchronous height update (immediate feedback) ---
         const relativeY = clientY - rect.top;
         const minHeight = 50;
         const maxHeight = rect.height - 50;
-        let newHeight = Math.min(maxHeight, Math.max(minHeight, rect.height - relativeY));
+        const newHeight = Math.min(maxHeight, Math.max(minHeight, rect.height - relativeY));
+        secondaryPanel.style.height = newHeight + 'px';
+        splitter.classList.remove('is-hidden');
 
-        this.currentSecondaryPanel.style.height = newHeight + 'px';
+        // --- Throttle the rest (settings updates) ---
+        // Store latest data for the RAF callback
+        this.lastClientY = clientY;
+        this.lastRect = rect;
 
-        // Ensure splitter is visible (remove hidden class)
-        if (this.currentSplitter) {
-            this.currentSplitter.classList.remove('is-hidden');
-        }
+        if (this.dragMoveRaf) return; // already scheduled
 
-        const COLLAPSE_THRESHOLD = 80;
-        if (!this.plugin.settings.secondaryPanelCollapsed && newHeight > COLLAPSE_THRESHOLD) {
-            this.plugin.settings.lastExpandedHeight = newHeight;
-        }
+        this.dragMoveRaf = requestAnimationFrame(() => {
+            this.dragMoveRaf = null;
+            if (!secondaryPanel || !splitContainer) return;
 
-        this.plugin.settings.secondaryPanelHeight = newHeight;
-        this.plugin.settings.secondaryPanelCollapsed = false;
-        this.currentSecondaryPanel.classList.remove('is-collapsed');
-        const collapseIcon = this.currentSecondaryPanel.querySelector('.portals-collapse-icon');
-        if (collapseIcon) collapseIcon.textContent = '▼';
-    };
+            // Use stored data to update non‑critical settings
+            const COLLAPSE_THRESHOLD = 80;
+            const currentHeight = parseFloat(secondaryPanel.style.height); // read actual height
+            if (!this.plugin.settings.secondaryPanelCollapsed && currentHeight > COLLAPSE_THRESHOLD) {
+                this.plugin.settings.lastExpandedHeight = currentHeight;
+            }
+            this.plugin.settings.secondaryPanelHeight = currentHeight;
+            this.plugin.settings.secondaryPanelCollapsed = false;
+            secondaryPanel.classList.remove('is-collapsed');
+            const collapseIcon = secondaryPanel.querySelector('.portals-collapse-icon');
+            if (collapseIcon) collapseIcon.textContent = '▼';
+        });
+    };  
 
     private handleDragEnd = (e: MouseEvent | TouchEvent) => {
+        if (this.dragMoveRaf) {
+            cancelAnimationFrame(this.dragMoveRaf);
+            this.dragMoveRaf = null;
+        }
         if (this.isDraggingSplitter) {
             this.isDraggingSplitter = false;
             document.body.classList.remove('portals-dragging');
