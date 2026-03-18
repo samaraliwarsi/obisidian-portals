@@ -210,6 +210,14 @@ export default class PortalsPlugin extends Plugin {
             }
         }
 
+        // Clean up expandedGroups for deleted tag portals
+        const existingTagPaths = new Set(this.settings.spaces.filter(s => s.type === 'tag').map(s => s.path));
+        for (const tagPath in this.settings.expandedGroups) {
+            if (!existingTagPaths.has(tagPath)) {
+                delete this.settings.expandedGroups[tagPath];
+            }
+        }
+
         // Save if anything changed
         if (beforeCount !== this.settings.spaces.length) {
             await this.saveSettings();
