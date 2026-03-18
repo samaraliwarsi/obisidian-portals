@@ -38,6 +38,7 @@ export class PortalsView extends ItemView {
     private sortableInstance: Sortable | null = null;
     private folderNoteEventRefs: Array<unknown> | null = null;
     private bookmarksListenerRef: unknown = null;
+    private renderTimer: number | null = null;
     private toggleFloatingButtonsCollapse(e: MouseEvent) {
         console.log('toggle called, current collapsed:', this.plugin.settings.floatingButtonsCollapsed);
         e.preventDefault();
@@ -48,6 +49,16 @@ export class PortalsView extends ItemView {
             console.log('saved, new collapsed:', this.plugin.settings.floatingButtonsCollapsed);
             this.render();
         });
+    }
+
+    private scheduleRender() {
+        if (this.renderTimer) {
+            window.clearTimeout(this.renderTimer);
+        }
+        this.renderTimer = window.setTimeout(() => {
+            this.renderContent();
+            this.renderTimer = null;
+        }, 50); // 50ms delay – adjust as needed
     }
 
     private collapseAllFolders() {
@@ -91,9 +102,9 @@ export class PortalsView extends ItemView {
     async onOpen() {
         this.render();
 
-        const renameRef = this.app.vault.on('rename', () => this.renderContent());
-        const deleteRef = this.app.vault.on('delete', () => this.renderContent());
-        const createRef = this.app.vault.on('create', () => this.renderContent());
+        const renameRef = this.app.vault.on('rename', () => this.scheduleRender());
+        const deleteRef = this.app.vault.on('delete', () => this.scheduleRender());
+        const createRef = this.app.vault.on('create', () => this.scheduleRender());
 
         this.vaultEventRef = () => {
             this.app.vault.offref(renameRef);
@@ -103,10 +114,10 @@ export class PortalsView extends ItemView {
 
 
         this.registerEvent(this.app.workspace.on('file-open', () => {
-            if (!this.renaming) this.renderContent();
+            if (!this.renaming) this.scheduleRender();
         }));
         this.registerEvent(this.app.workspace.on('layout-change', () => {
-            if (!this.renaming) this.renderContent();
+            if (!this.renaming) this.scheduleRender();
         }));
 
         // Set up bookmarks change listener (using internal plugin for now)
@@ -159,6 +170,11 @@ export class PortalsView extends ItemView {
     }
 
     async onClose() {
+        if (this.renderTimer) {
+            window.clearTimeout(this.renderTimer);
+            this.renderTimer = null;
+        }
+        
         if (this.tooltipEl) {
             this.tooltipEl.remove();
             this.tooltipEl = null;
