@@ -32,6 +32,7 @@ export interface SpacesSettings {
     enableFolderNotes: boolean;
     floatingButtonsCollapsed: boolean;
     expandedGroups: Record<string, string[]>;
+    disableSidePanelOnMobile: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -56,6 +57,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     enableFolderNotes: true,
     floatingButtonsCollapsed: false,
     expandedGroups: {},
+    disableSidePanelOnMobile: false,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -195,6 +197,18 @@ export class SpacesSettingTab extends PluginSettingTab {
                         this.display();
                     }).open();
                 }));
+
+        new Setting(containerEl)
+            .setName('Disable side portal on mobile')
+            .setDesc('If enabled, the side portal will be hidden on mobile devices.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.disableSidePanelOnMobile)
+                .onChange(async (value) => {
+                    this.plugin.settings.disableSidePanelOnMobile = value;
+                    await this.plugin.saveSettings();
+                    // Force all portals views to re-render
+                    this.plugin.refreshAllViews();
+                }));
                     
                    
 
@@ -327,7 +341,7 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .setButtonText('Add')
                 .setCta()
                 .onClick(() => {
-                    new AddPortalModal(this.app, (path: string, type: 'folder' | 'tag') => {
+                    new AddPortalModal(this.app, this.plugin, (path: string, type: 'folder' | 'tag') => {
                         if (this.plugin.settings.spaces.some(s => s.path === path && s.type === type)) {
                             new Notice('This portal already exists.');
                             return;
@@ -672,7 +686,7 @@ class AddPortalModal extends Modal {
     private subFolders: TFolder[] = [];
     private allTags: string[] = [];
 
-    constructor(app: App, private onChoose: (path: string, type: 'folder' | 'tag') => void) {
+    constructor(app: App, private plugin: PortalsPlugin, private onChoose: (path: string, type: 'folder' | 'tag') => void) {
         super(app);
         const root = app.vault.getRoot();
         const walk = (f: TFolder) => {
@@ -744,7 +758,7 @@ class AddPortalModal extends Modal {
             this.close();
         });
     }
-
+    
     private filterResults() {
         this.resultsContainer.empty();
         const query = this.searchInput.value.toLowerCase();
@@ -752,8 +766,21 @@ class AddPortalModal extends Modal {
         if (this.currentTab === 'tag') {
             const filtered = this.allTags.filter(t => t.toLowerCase().includes(query));
             for (const tag of filtered) {
-                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item', text: '#' + tag });
+                const isUsed = this.plugin.settings.spaces.some(s => s.type === 'tag' && s.path === tag);
+                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item' });
+                const displayText = '#' + tag + (isUsed ? ' (in use)' : '');
+                item.setText(displayText);
+                if (isUsed) {
+                    item.addClass('portals-already-used');
+                    // Add checkmark icon
+                    const checkSpan = item.createSpan({ cls: 'portals-check-icon' });
+                    checkSpan.createEl('i', { cls: 'ph ph-check' });
+                }
                 item.addEventListener('click', () => {
+                    if (isUsed) {
+                        new Notice('This tag is already a portal.');
+                        return;
+                    }
                     this.resultsContainer.querySelectorAll('.add-portal-item').forEach(el => el.removeClass('is-selected'));
                     item.addClass('is-selected');
                     this.selectedPath = tag;
@@ -763,8 +790,21 @@ class AddPortalModal extends Modal {
             const folders = this.currentTab === 'root' ? this.rootFolders : this.subFolders;
             const filtered = folders.filter(f => f.path.toLowerCase().includes(query) || f.name.toLowerCase().includes(query));
             for (const folder of filtered) {
-                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item', text: folder.path });
+                const isUsed = this.plugin.settings.spaces.some(s => s.type === 'folder' && s.path === folder.path);
+                const item = this.resultsContainer.createDiv({ cls: 'add-portal-item' });
+                const displayText = folder.path + (isUsed ? ' (in use)' : '');
+                item.setText(displayText);
+                if (isUsed) {
+                    item.addClass('portals-already-used');
+                    // Add checkmark icon
+                    const checkSpan = item.createSpan({ cls: 'portals-check-icon' });
+                    checkSpan.createEl('i', { cls: 'ph ph-check' });
+                }
                 item.addEventListener('click', () => {
+                    if (isUsed) {
+                        new Notice('This folder is already a portal.');
+                        return;
+                    }
                     this.resultsContainer.querySelectorAll('.add-portal-item').forEach(el => el.removeClass('is-selected'));
                     item.addClass('is-selected');
                     this.selectedPath = folder.path;

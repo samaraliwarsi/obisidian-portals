@@ -40,15 +40,19 @@ export class PortalsView extends ItemView {
     private bookmarksListenerRef: unknown = null;
     private renderTimer: number | null = null;
     private toggleFloatingButtonsCollapse(e: MouseEvent) {
-        console.log('toggle called, current collapsed:', this.plugin.settings.floatingButtonsCollapsed);
         e.preventDefault();
         const el = e.currentTarget as HTMLElement;
         el.blur();
         this.plugin.settings.floatingButtonsCollapsed = !this.plugin.settings.floatingButtonsCollapsed;
         void this.plugin.saveData(this.plugin.settings).then(() => {
-            console.log('saved, new collapsed:', this.plugin.settings.floatingButtonsCollapsed);
             this.render();
         });
+    }
+
+    private isSidePanelEnabled(): boolean {
+        const globalEnabled = this.plugin.settings.sidePanelEnabled;
+        const disabledOnMobile = Platform.isMobile && this.plugin.settings.disableSidePanelOnMobile;
+        return globalEnabled && !disabledOnMobile;
     }
 
     private scheduleRender() {
@@ -262,18 +266,17 @@ export class PortalsView extends ItemView {
     //-- New Drag Handler
 
     private handleDragStart = (e: MouseEvent | TouchEvent) => {
-        if (!this.plugin.settings.sidePanelEnabled) return;
+        if (!this.isSidePanelEnabled()) return;
         this.isDraggingSplitter = true;
         document.body.classList.add('portals-dragging');
         e.preventDefault();
     };
 
     private dragMoveRaf: number | null = null;
-    private lastClientY = 0;
-    private lastRect: DOMRect | null = null;
 
     private handleDragMove = (e: MouseEvent | TouchEvent) => {
-        if (!this.isDraggingSplitter || !this.plugin.settings.sidePanelEnabled) return;
+        if (!this.isDraggingSplitter) return;
+        if (!this.isSidePanelEnabled()) return;
         e.preventDefault();
 
         const secondaryPanel = this.currentSecondaryPanel;
@@ -296,9 +299,6 @@ export class PortalsView extends ItemView {
         splitter.classList.remove('is-hidden');
 
         // --- Throttle the rest (settings updates) ---
-        // Store latest data for the RAF callback
-        this.lastClientY = clientY;
-        this.lastRect = rect;
 
         if (this.dragMoveRaf) return; // already scheduled
 
@@ -328,8 +328,7 @@ export class PortalsView extends ItemView {
         if (this.isDraggingSplitter) {
             this.isDraggingSplitter = false;
             document.body.classList.remove('portals-dragging');
-
-            if (this.currentSecondaryPanel) {
+            if (this.isSidePanelEnabled() && this.currentSecondaryPanel) {
                 const height = parseFloat(this.currentSecondaryPanel.style.height);
                 const minHeight = 50;
                 if (height <= minHeight + 10) {
@@ -350,7 +349,7 @@ export class PortalsView extends ItemView {
     //-- ExpandPanel Helper
 
     private expandPanel() {
-        if (!this.plugin.settings.sidePanelEnabled) return;
+        if (!this.isSidePanelEnabled()) return;
         if (this.plugin.settings.secondaryPanelCollapsed) {
             this.plugin.settings.secondaryPanelCollapsed = false;
             const secondaryPanel = this.currentSecondaryPanel;
@@ -411,6 +410,7 @@ export class PortalsView extends ItemView {
             showFolderNotesInTree: s.showFolderNotesInTree,
             enableFolderNotes: s.enableFolderNotes,
             floatingButtonsCollapsed: s.floatingButtonsCollapsed,
+            disableSidePanelOnMobile: s.disableSidePanelOnMobile,
         });
     }
 
@@ -693,10 +693,15 @@ export class PortalsView extends ItemView {
             secondaryPanel.createDiv({ cls: 'portals-split-content' });
 
             // Set initial state
+            const sidePanelEnabled = this.isSidePanelEnabled();
             const isCollapsed = this.plugin.settings.secondaryPanelCollapsed;
-            if (!this.plugin.settings.sidePanelEnabled) {
+            if (!sidePanelEnabled) {
                 secondaryPanel.classList.add('is-disabled');
                 splitter.classList.add('is-hidden');
+                secondaryPanel.style.height = '42px';
+                secondaryPanel.classList.add('is-collapsed');
+                const collapseIcon = secondaryHeader.querySelector('.portals-collapse-icon');
+                if (collapseIcon) collapseIcon.textContent = '▲';
             } else if (isCollapsed) {
                 secondaryPanel.style.height = '42px';
                 secondaryPanel.classList.add('is-collapsed');
@@ -710,7 +715,7 @@ export class PortalsView extends ItemView {
             // Toggle collapse on icon click
             collapseIcon.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (!this.plugin.settings.sidePanelEnabled) return;
+                if (!this.isSidePanelEnabled()) return;
 
                 const newCollapsed = !this.plugin.settings.secondaryPanelCollapsed;
                 this.plugin.settings.secondaryPanelCollapsed = newCollapsed;

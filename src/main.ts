@@ -145,6 +145,14 @@ export default class PortalsPlugin extends Plugin {
         });
     }
 
+    refreshAllViews() {
+        this.app.workspace.getLeavesOfType(VIEW_TYPE_PORTALS).forEach(leaf => {
+            if (leaf.view instanceof PortalsView) {
+                leaf.view.render();
+            }
+        });
+    }
+
     async updateRecentFiles(filePath: string) {
         const maxRecent = 20;
         let recent = this.settings.recentFilesList || [];

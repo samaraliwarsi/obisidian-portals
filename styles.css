@@ -5386,6 +5386,25 @@ body.portals-dragging {
 
 /* ===== Settings page ===== */
 
+/*--Portal Selection Modal Styles--*/
+
+.add-portal-item.portals-already-used {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--background-modifier-hover);
+}
+
+.portals-check-icon {
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-accent);
+}
+
+.portals-check-icon i {
+    font-size: 1.2em;
+}
+
 /* ----- Desktop / base styles ----- */
 
 /* Portal name (folder/tag name) */
