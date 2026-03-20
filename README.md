@@ -7,7 +7,9 @@
   <a href="https://github.com/samaraliwarsi/obsidian-portals/blob/main/LICENSE"><img src="https://img.shields.io/github/license/samaraliwarsi/obsidian-portals" alt="License"></a>
   <a href="https://obsidian.md"><img src="https://img.shields.io/badge/Obsidian-Plugin-blue?logo=obsidian" alt="Obsidian Plugin"></a>
 </div>
-Portals enhances your Obsidian file navigation by letting you pin any folder or tag as a **customizable tab**, a Portal into your selected folder trees. Add icons to Tabs, background colors, gradients and rearrange them to suit your workflow.
+
+Portals enhances your Obsidian file navigation by letting you pin any folder or tag as a customizable tab, a Portal into your selected folder trees. Add icons to Tabs, background colors, gradients and rearrange them to suit your workflow.
+
 
 ![Portals_Main](Screenshots/Portals_Main.png) 
 
