@@ -1,7 +1,13 @@
 # Portals for Obsidian
 
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+  <a href="https://github.com/samaraliwarsi/obsidian-portals/releases"><img src="https://img.shields.io/github/v/release/samaraliwarsi/obsidian-portals" alt="GitHub release"></a>
+  <a href="https://github.com/samaraliwarsi/obsidian-portals/releases"><img src="https://img.shields.io/github/downloads/samaraliwarsi/obsidian-portals/total" alt="Downloads"></a>
+  <a href="https://github.com/samaraliwarsi/obsidian-portals/stargazers"><img src="https://img.shields.io/github/stars/samaraliwarsi/obsidian-portals" alt="Stars"></a>
+  <a href="https://github.com/samaraliwarsi/obsidian-portals/blob/main/LICENSE"><img src="https://img.shields.io/github/license/samaraliwarsi/obsidian-portals" alt="License"></a>
+  <a href="https://obsidian.md"><img src="https://img.shields.io/badge/Obsidian-Plugin-blue?logo=obsidian" alt="Obsidian Plugin"></a>
+</div>
 Portals enhances your Obsidian file navigation by letting you pin any folder or tag as a **customizable tab**, a Portal into your selected folder trees. Add icons to Tabs, background colors, gradients and rearrange them to suit your workflow.
-## Screenshots
 
 ![Portals_Main](Screenshots/Portals_Main.png) 
 
@@ -12,19 +18,17 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 - **Pin any folder or tag** – Turn your most‑used folders and tags into tabs at the top of the file pane.
 - **Custom icons & colors** – Choose from hundreds of icons from the Phosphor set for the tabs and set any background color with an opacity slider. Option to use gradients. Control tab and file pane colors separately.
 - **Full file tree** – Expand/collapse folders, drag‑and‑drop files and folders to move them.
+- **Tag Grouping** - Use existing tags in listed files to enabled grouped view in tag list for, delivering a better layout for tag portal tabs.
 - **Complete context menus** – Right‑click files or folders to get the same menu as the default file explorer.
-- **Floating action buttons** – Quick‑create notes, folders, collapse all subfolders, and change sort order.
+- **Floating action buttons** – Quick‑create notes, folders, collapse all subfolders, and change sort order. Floating buttons are foldable on `Right Click/Long Press` for those wanting a cleaner folder pane view. 
 - **Native sorting** – Choose how files are sorted (by name, creation time, or modification time, ascending/descending). Your choice is saved between sessions.
-- **Side Portal** - A modular, collapsable, resizable pane for new views and more ways to access content. Toggle it on in settings to find options inside. **Side Portal** has tabs containing,  **Bookmarks**, **Recent Files** and **Folder Notes**. To use **Side Portal,** at least one tab is required to be on in settings. 
-- **Folder Notes** – Each folder can have an associated note (markdown file with the same name). The note can be displayed in a side panel, and folders with a note are marked with a small dot. Global toggle to enable/disable folder notes. Folders with **Folder Notes** are highlighted with a grey dot. **Folder notes** can be used without side portal as well.
+- **Side Portal** - A modular, collapsable, resizable pane for new views and more ways to access content. Toggle it on in settings to find options inside. **Side Portal** has tabs containing,  **Bookmarks**, **Recent Files** and **Folder Notes**. To use **Side Portal,** at least one tab is required to be on in settings. Side portal can be turned off on mobile to help smaller screen devices.
+- **Folder Notes** – Each folder can have an associated note (markdown file with the same name). The note can be displayed in a side panel, and folders with a note are marked with a small dot. Global toggle to enable/disable folder notes. **Folder notes** can be used without side portal as well.
 - **Recents** - Live update recent files list from across the vault. 
 - **Bookmarks** - Bookmark your favourite files or web links from Obsidian web viewer.
-- **Safe deletion** – Files are moved to Obsidian’s `.trash` folder – no permanent deletion without confirmation. Works well with Trash Explorer Plugin.
+- **Safe deletion** – Files are moved to Obsidian’s `.trash` folder, if such are the preferences set by user in obsidian `settings`. 
 - **Mobile friendly** – Responsive design that works on small screens. Tested on Android (more platforms coming).
-- **Export/Import settings** – Backup your tab configuration or transfer it to another vault.
->[!TIP]
-> If you'd like a starting point for your folder notes, you can find a [Sample_FolderNote](templates/Sample_FolderNote.md) and a [Guide](templates/Portals_FolderNote_Guide.md) in the [templates](templates) folder. Just copy it to your vault and rename it as needed.
-
+- **Export/Import settings** – Backup your tab configuration or transfer it to another vault using json files from `Settings`.
 ## ⚙️ Installation
 ### Using BRAT (Beta Reviewers Auto-update Tester)
 
@@ -50,6 +54,7 @@ Portals enhances your Obsidian file navigation by letting you pin any folder or 
 - The active tab is highlighted and shows the folder/tag name.
 - Hover over an inactive tab to see a tooltip with its name.
 - For **Side Portal** choose the tabs you want in settings.
+- **Side Portal** can be turned off for mobile devices. 
 ### Folder Notes
 - Each folder can have an associated **folder note** – a markdown file with the same name as the folder (case‑insensitive).  
 - For non‑root folders, use the folder’s context menu to **Create folder note** or **Open folder note**.
