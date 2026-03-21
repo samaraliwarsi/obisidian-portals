@@ -423,6 +423,7 @@ export class PortalsView extends ItemView {
             enableFolderNotes: s.enableFolderNotes,
             floatingButtonsCollapsed: s.floatingButtonsCollapsed,
             disableSidePanelOnMobile: s.disableSidePanelOnMobile,
+            enableFileExtensionNonMD: s.enableFileExtensionNonMD,
         });
     }
 
@@ -977,6 +978,10 @@ export class PortalsView extends ItemView {
                 if (this.isFileOpen(file)) {
                     fileEl.createSpan({ cls: 'open-dot' });
                 }
+                if (this.plugin.settings.enableFileExtensionNonMD && file.extension && file.extension !== 'md') {
+                    const extSpan = fileEl.createSpan({ cls: 'file-extension' });
+                    extSpan.setText('.' + file.extension.toUpperCase());
+                }
 
                 fileEl.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1452,6 +1457,11 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
             if (this.isFileOpen(file)) {
                 fileEl.createSpan({ cls: 'open-dot' });
+            }
+
+            if (this.plugin.settings.enableFileExtensionNonMD && file.extension && file.extension !== 'md') {
+                const extSpan = fileEl.createSpan({ cls: 'file-extension' });
+                extSpan.setText('.' + file.extension.toUpperCase());
             }
 
             if (!Platform.isMobile) {
@@ -2093,6 +2103,11 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
                     if (this.isFileOpen(child)) {
                         fileEl.createSpan({ cls: 'open-dot' });
+                    }
+
+                    if (this.plugin.settings.enableFileExtensionNonMD && child.extension && child.extension !== 'md') {
+                        const extSpan = fileEl.createSpan({ cls: 'file-extension' });
+                        extSpan.setText('.' + child.extension.toUpperCase());
                     }
 
                     if (!Platform.isMobile) {

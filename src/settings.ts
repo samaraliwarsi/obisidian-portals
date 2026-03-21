@@ -33,6 +33,7 @@ export interface SpacesSettings {
     floatingButtonsCollapsed: boolean;
     expandedGroups: Record<string, string[]>;
     disableSidePanelOnMobile: boolean;
+    enableFileExtensionNonMD: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -58,6 +59,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     floatingButtonsCollapsed: false,
     expandedGroups: {},
     disableSidePanelOnMobile: false,
+    enableFileExtensionNonMD: true,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -139,6 +141,17 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.showInactiveTabNames)
                 .onChange(async (value) => {
                     this.plugin.settings.showInactiveTabNames = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        new Setting(containerEl)
+            .setName('Show extensions for non-markdown files')
+            .setDesc('Display the extensions for files that are not markdown.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableFileExtensionNonMD)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableFileExtensionNonMD = value;
                     await this.plugin.saveSettings();
                     this.display();
                 }));

@@ -5097,6 +5097,17 @@ margin-left: 4px;
 vertical-align: middle;
 }
 
+/* Extension text badge for non-markdown files */ 
+
+.file-extension {
+    font-size: 0.5em;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-left: auto; /* fallback */
+    opacity: 50%;
+    font-weight: bold;
+}
+
 /* Highlight for newly created items */
 
 .portals-item-highlight {
