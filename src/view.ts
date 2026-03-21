@@ -975,12 +975,20 @@ export class PortalsView extends ItemView {
                 nameSpan.addClass('portals-item-name');
                 fileEl.dataset.path = file.path;
 
-                if (this.isFileOpen(file)) {
-                    fileEl.createSpan({ cls: 'open-dot' });
+                const isOpen = this.isFileOpen(file);
+                let openDotspan: HTMLSpanElement | null = null;
+                if (isOpen) {
+                    openDotspan = fileEl.createSpan({ cls: 'open-dot' });
                 }
                 if (this.plugin.settings.enableFileExtensionNonMD && file.extension && file.extension !== 'md') {
                     const extSpan = fileEl.createSpan({ cls: 'file-extension' });
                     extSpan.setText('.' + file.extension.toUpperCase());
+                    if(openDotspan) {
+                        openDotspan.style.display = 'none';
+                    }
+                    if(isOpen) {
+                        extSpan.addClass('is-open');
+                    }
                 }
 
                 fileEl.addEventListener('click', (e) => {
@@ -1455,13 +1463,21 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             nameSpan.addClass('portals-item-name');
             fileEl.dataset.path = file.path;
 
-            if (this.isFileOpen(file)) {
-                fileEl.createSpan({ cls: 'open-dot' });
+            const isOpen = this.isFileOpen(file);
+            let openDotSpan: HTMLSpanElement | null = null;
+            if (isOpen) {
+                openDotSpan = fileEl.createSpan({ cls: 'open-dot' });
             }
 
             if (this.plugin.settings.enableFileExtensionNonMD && file.extension && file.extension !== 'md') {
                 const extSpan = fileEl.createSpan({ cls: 'file-extension' });
                 extSpan.setText('.' + file.extension.toUpperCase());
+                if (openDotSpan) {
+                    openDotSpan.style.display = 'none';
+                }
+                if (isOpen) {
+                    extSpan.addClass('is-open');
+                }
             }
 
             if (!Platform.isMobile) {
@@ -2101,13 +2117,21 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                     nameSpan.addClass('portals-item-name');
                     fileEl.dataset.path = child.path;
 
-                    if (this.isFileOpen(child)) {
-                        fileEl.createSpan({ cls: 'open-dot' });
+                    const isOpen = this.isFileOpen(child);
+                    let openDotSpan: HTMLSpanElement | null = null;
+                    if (isOpen) {
+                        openDotSpan = fileEl.createSpan({ cls: 'open-dot' });
                     }
 
                     if (this.plugin.settings.enableFileExtensionNonMD && child.extension && child.extension !== 'md') {
                         const extSpan = fileEl.createSpan({ cls: 'file-extension' });
                         extSpan.setText('.' + child.extension.toUpperCase());
+                        if (openDotSpan) {
+                            openDotSpan.style.display = 'none'
+                        }
+                        if (isOpen) {
+                            extSpan.addClass('is-open');
+                        }
                     }
 
                     if (!Platform.isMobile) {

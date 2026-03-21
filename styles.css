@@ -5100,12 +5100,15 @@ vertical-align: middle;
 /* Extension text badge for non-markdown files */ 
 
 .file-extension {
-    font-size: 0.5em;
-    color: var(--text-muted);
+    font-size: 0.6em;
+    color: color-mix(in srgb, var(--text-muted) 50%, transparent);
     flex-shrink: 0;
     margin-left: auto; /* fallback */
-    opacity: 50%;
     font-weight: bold;
+}
+
+.file-extension.is-open {
+    color: var(--text-accent);
 }
 
 /* Highlight for newly created items */
