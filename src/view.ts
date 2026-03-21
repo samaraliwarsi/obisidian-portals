@@ -43,9 +43,21 @@ export class PortalsView extends ItemView {
         e.preventDefault();
         const el = e.currentTarget as HTMLElement;
         el.blur();
+
+        // save scroll position of file tree
+        const treeContainer = this.containerEl.querySelector('.portals-tree-container') as HTMLElement;
+        const scrollPos = treeContainer ? treeContainer.scrollTop: 0;
+
         this.plugin.settings.floatingButtonsCollapsed = !this.plugin.settings.floatingButtonsCollapsed;
         void this.plugin.saveData(this.plugin.settings).then(() => {
             this.render();
+            // restore scroll after render
+            if (treeContainer) {
+                requestAnimationFrame(() => {
+                    const newTree = this.containerEl.querySelector('.portals-tree-container') as HTMLElement;
+                    if (newTree) newTree.scrollTop = scrollPos;
+                });
+            }
         });
     }
 
