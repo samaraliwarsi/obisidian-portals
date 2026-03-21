@@ -34,6 +34,7 @@ export interface SpacesSettings {
     expandedGroups: Record<string, string[]>;
     disableSidePanelOnMobile: boolean;
     enableFileExtensionNonMD: boolean;
+    highlightFolderNotes: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -60,6 +61,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     expandedGroups: {},
     disableSidePanelOnMobile: false,
     enableFileExtensionNonMD: true,
+    highlightFolderNotes: true,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -180,6 +182,19 @@ export class SpacesSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.display();
                 }));
+        
+        // - Highlight Folder Notes
+        new Setting(containerEl)
+        .setName('Highlight folder notes')
+        .setDesc('If enabled, folders with a folder note will have a highlighted icon.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.highlightFolderNotes)
+            .setDisabled(!this.plugin.settings.enableFolderNotes)
+            .onChange(async (value) => {
+                this.plugin.settings.highlightFolderNotes = value;
+                await this.plugin.saveSettings();
+                this.display();
+            }));
 
         // --- SIDE PORTAL SETTINGS ---
         new Setting(containerEl)

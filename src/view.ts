@@ -424,6 +424,7 @@ export class PortalsView extends ItemView {
             floatingButtonsCollapsed: s.floatingButtonsCollapsed,
             disableSidePanelOnMobile: s.disableSidePanelOnMobile,
             enableFileExtensionNonMD: s.enableFileExtensionNonMD,
+            highlightFolderNotes: s.highlightFolderNotes,
         });
     }
 
@@ -2050,7 +2051,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
         const iconSpan = summary.createSpan({ cls: 'folder-icon' });
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
-        if (this.plugin.settings.enableFolderNotes && this.hasFolderNote(folder)) {
+        if (this.plugin.settings.enableFolderNotes && this.plugin.settings.highlightFolderNotes && this.hasFolderNote(folder)) {
             iconSpan.addClass('has-folder-note');
         }
 
