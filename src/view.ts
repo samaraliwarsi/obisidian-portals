@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, Menu, Notice, Platform, Component } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, Menu, Notice, Platform, Component, debounce } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
@@ -39,6 +39,28 @@ export class PortalsView extends ItemView {
     private folderNoteEventRefs: Array<unknown> | null = null;
     private bookmarksListenerRef: unknown = null;
     private renderTimer: number | null = null;
+    private folderNoteCache = new Map<string, { element: HTMLElement; component: Component }>();
+    private folderNoteScrollPositions = new Map<string, number>();
+    private getCurrentFolderNote(): TFile | null {
+        const selectedSpace = this.plugin.settings.selectedSpace;
+        if (!selectedSpace || selectedSpace.type !== 'folder') return null;
+        if (selectedSpace.path === '/') {
+            const vaultName = this.app.vault.getName();
+            const rootNotePath = vaultName + '.md';
+            const file = this.app.vault.getAbstractFileByPath(rootNotePath);
+            return file instanceof TFile ? file : null;
+        } else {
+            const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
+            if (!(folder instanceof TFolder)) return null;
+            return folder.children.find((child): child is TFile =>
+                child instanceof TFile && this.isFolderNote(child, folder)
+            ) ?? null;
+        }
+    }
+
+    private invalidateFolderNoteCache(file: TFile) {
+        this.folderNoteCache.delete(file.path);
+    }
     private toggleFloatingButtonsCollapse(e: MouseEvent) {
         e.preventDefault();
         const el = e.currentTarget as HTMLElement;
@@ -175,7 +197,30 @@ export class PortalsView extends ItemView {
         const folderNoteRenameRef = this.app.vault.on('rename', refreshFolderNotes);
         const folderNoteDeleteRef = this.app.vault.on('delete', refreshFolderNotes);
         const folderNoteCreateRef = this.app.vault.on('create', refreshFolderNotes);
-        this.folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef];
+        // Debounced refresh for folder notes tab (to avoid frequent re‑renders)
+        const debouncedRefreshFolderNotes = debounce(() => {
+            if (this.plugin.settings.activeSplitTab === 'folder-notes') {
+                const secondaryPanel = this.containerEl.querySelector('.portals-secondary-panel');
+                if (secondaryPanel) {
+                    const contentEl = secondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+                    if (contentEl) {
+                        contentEl.empty();
+                        this.renderFolderNotesTab(contentEl);
+                    }
+                }
+            }
+        }, 300);
+
+        const folderNoteModifyRef = this.app.vault.on('modify', (file) => {
+            if (!this.plugin.settings.enableFolderNotes) return;
+            if (!(file instanceof TFile)) return; // only handle files
+            const currentNote = this.getCurrentFolderNote();
+            if (file.path === currentNote?.path) {
+                this.invalidateFolderNoteCache(file);
+                debouncedRefreshFolderNotes();
+            }
+        });
+        this.folderNoteEventRefs = [folderNoteRenameRef, folderNoteDeleteRef, folderNoteCreateRef, folderNoteModifyRef];
 
         // Global drag listeners
         document.addEventListener('mousemove', this.handleDragMove);
@@ -228,6 +273,13 @@ export class PortalsView extends ItemView {
             }
             this.bookmarksListenerRef = null;
         }
+
+        // Clean up folder note cache
+        for (const { component } of this.folderNoteCache.values()) {
+            this.removeChild(component);
+        }
+        this.folderNoteCache.clear();
+        this.folderNoteScrollPositions.clear();
 
         document.removeEventListener('mousemove', this.handleDragMove);
         document.removeEventListener('touchmove', this.handleDragMove);
@@ -429,6 +481,17 @@ export class PortalsView extends ItemView {
     }
 
     render() {
+        // Save scroll position of current folder note if it exists
+        if (this.plugin.settings.enableFolderNotes && this.plugin.settings.activeSplitTab === 'folder-notes') {
+            const splitContent = this.containerEl.querySelector('.portals-split-content') as HTMLElement;
+            const noteContainer = splitContent?.querySelector('.markdown-preview-view') as HTMLElement;
+            if (noteContainer) {
+                const currentNote = this.getCurrentFolderNote();
+                if (currentNote) {
+                    this.folderNoteScrollPositions.set(currentNote.path, noteContainer.scrollTop);
+                }
+            }
+        }
         const newHash = this.getSettingsHash();
         if (newHash === this.lastRenderHash) return;
         this.lastRenderHash = newHash;
@@ -1224,61 +1287,67 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 }
 
     //--RenderFolderNotesTab
-    
     private renderFolderNotesTab(contentEl: HTMLElement) {
-        const selectedSpace = this.plugin.settings.selectedSpace;
-        if (!selectedSpace || selectedSpace.type !== 'folder') {
-            contentEl.createEl('p', { 
-                text: 'Select a folder portal tab to view its folder note.',
-                cls: 'portals-folder-note-message'
-             });
+        const targetFile = this.getCurrentFolderNote();
+        if (!targetFile) {
+            contentEl.createEl('p', { text: 'No folder note found for the current space.', cls: 'portals-folder-note-message' });
             return;
         }
 
-        let targetFile: TFile | null = null;
-
-        if (selectedSpace.path === '/') {
-            // Root folder: look for a file named after the vault
-            const vaultName = this.app.vault.getName();
-            const rootNotePath = vaultName + '.md';
-            const file = this.app.vault.getAbstractFileByPath(rootNotePath);
-            targetFile = file instanceof TFile ? file : null;
-
-            if (!targetFile) {
-                contentEl.createEl('p', {
-                    text: 'No folder note found for the vault root. Create a file named exactly like your vault at the root to use as folder note.',
-                    cls: 'portals-folder-note-message'
-                });
-                return;
+        // Check cache
+        const cached = this.folderNoteCache.get(targetFile.path);
+        if (cached) {
+            contentEl.empty();
+            contentEl.appendChild(cached.element);
+            // Restore scroll position if stored
+            const savedScroll = this.folderNoteScrollPositions.get(targetFile.path);
+            if (savedScroll !== undefined) {
+                cached.element.scrollTop = savedScroll;
+                this.folderNoteScrollPositions.delete(targetFile.path);
             }
-        } else {
-            // Non‑root folder: get the folder and find its note
-            const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
-            if (!(folder instanceof TFolder)) {
-                contentEl.createEl('p', { 
-                    text: 'Folder not found.',
-                    cls: 'portals-folder-note-message'
-                 });
-                return;
-            }
-
-            const folderNote = folder.children.find((child): child is TFile => 
-                child instanceof TFile && this.isFolderNote(child, folder)
-            );
-
-            if (!folderNote) {
-                contentEl.createEl('p', { 
-                    text: 'No folder note found for this folder. Create one using the folder context menu or start a file with same name as the portal space folder.',
-                    cls: 'portals-folder-note-message'    
-                });
-                return;
-            }
-
-            targetFile = folderNote;
+            return;
         }
 
-        // Render the note content
-        this.renderFolderNoteContent(targetFile, contentEl);
+        // No cache – create detached element
+        const noteContainer = document.createElement('div');
+        noteContainer.addClass('markdown-preview-view', 'portals-folder-note-container');
+
+        this.app.vault.read(targetFile).then(async (content) => {
+            try {
+                const component = new Component();
+                this.addChild(component);
+                await MarkdownRenderer.render(this.app, content, noteContainer, targetFile.path, component);
+                await this.processEmbeds(noteContainer, component, targetFile.path);
+
+                // Store in cache
+                this.folderNoteCache.set(targetFile.path, { element: noteContainer, component });
+                const savedScroll = this.folderNoteScrollPositions.get(targetFile.path);
+                if (savedScroll !== undefined) {
+                    noteContainer.scrollTop = savedScroll;
+                    this.folderNoteScrollPositions.delete(targetFile.path);
+                }
+
+                // Append to contentEl (if still relevant)
+                if (this.plugin.settings.activeSplitTab === 'folder-notes') {
+                    contentEl.empty();
+                    contentEl.appendChild(noteContainer);
+                }
+            } catch (e) {
+                console.error('Error rendering folder note:', e);
+                noteContainer.setText('Error rendering note.');
+            }
+        }).catch(e => {
+            console.error('Error reading folder note:', e);
+            noteContainer.setText('Error reading note.');
+        });
+
+        noteContainer.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('a')) return;
+            void this.app.workspace.getLeaf().openFile(targetFile);
+        });
+
+        contentEl.empty();
+        contentEl.appendChild(noteContainer);
     }
 
     //---RenderFoldernote Helper
