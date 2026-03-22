@@ -5057,7 +5057,7 @@ background-color: var(--background-modifier-hover);
 
 .file-item .portals-item-name,
 .folder-summary .portals-item-name {
-font-weight: 400; /* files regular, folders will be overridden below */
+font-weight: normal; 
 white-space: nowrap;
 overflow: hidden;
 text-overflow: ellipsis;
@@ -5065,10 +5065,14 @@ flex: 1;
 min-width: 0;
 }
 
+.folder-summary .portals-item-name {
+font-weight: normal;
+}
+
 /* Folder names – bold */
 
-.folder-summary .portals-item-name {
-font-weight: 700 !important;
+.portals-tree-container.portals-bold-folders .folder-summary .portals-item-name {
+    font-weight: 700;
 }
 
 /* Icons in tree */
@@ -5658,7 +5662,6 @@ body.portals-dragging {
 .portals-tree-container.portals-compact-tree .file-item .portals-item-name {
     font-size: 0.85em;
     line-height: 1.2;
-    font-weight: normal !important;
 }
 
 .portals-tree-container.portals-compact-tree .folder-icon i,

@@ -36,6 +36,7 @@ export interface SpacesSettings {
     enableFileExtensionNonMD: boolean;
     highlightFolderNotes: boolean;
     compactTree: boolean;
+    boldFolderNames: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -64,6 +65,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     enableFileExtensionNonMD: true,
     highlightFolderNotes: true,
     compactTree: false,
+    boldFolderNames: false,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -145,6 +147,17 @@ export class SpacesSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.tabColorEnabled)
                 .onChange(async (value) => {
                     this.plugin.settings.tabColorEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        new Setting(containerEl)
+            .setName('Bold folder names')
+            .setDesc('Make folder names bold in the tree.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.boldFolderNames)
+                .onChange(async (value) => {
+                    this.plugin.settings.boldFolderNames = value;
                     await this.plugin.saveSettings();
                     this.display();
                 }));

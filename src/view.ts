@@ -478,6 +478,7 @@ export class PortalsView extends ItemView {
             enableFileExtensionNonMD: s.enableFileExtensionNonMD,
             highlightFolderNotes: s.highlightFolderNotes,
             compactTree: s.compactTree,
+            boldFolderNames: s.boldFolderNames,
         });
     }
 
@@ -660,6 +661,9 @@ export class PortalsView extends ItemView {
             const treeContainer = mainPanel.createDiv({ cls: 'portals-tree-container' });
             if (this.plugin.settings.compactTree) {
                 treeContainer.addClass('portals-compact-tree');
+            }
+            if (this.plugin.settings.boldFolderNames) {
+                treeContainer.addClass('portals-bold-folders');
             }
 
             // Splitter (draggable)
