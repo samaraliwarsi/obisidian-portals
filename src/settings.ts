@@ -35,6 +35,7 @@ export interface SpacesSettings {
     disableSidePanelOnMobile: boolean;
     enableFileExtensionNonMD: boolean;
     highlightFolderNotes: boolean;
+    compactTree: boolean;
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -62,6 +63,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     disableSidePanelOnMobile: false,
     enableFileExtensionNonMD: true,
     highlightFolderNotes: true,
+    compactTree: false,
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -110,6 +112,17 @@ export class SpacesSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     new Notice('Changes will take effect after restarting Obsidian.');
                 }));
+
+        new Setting(containerEl)
+        .setName('Compact tree view')
+        .setDesc('Reduce spacing to display more items in the tree.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.compactTree)
+            .onChange(async (value) => {
+                this.plugin.settings.compactTree = value;
+                await this.plugin.saveSettings();
+                this.display();
+            }));
 
         new Setting(containerEl)
             .setName('File pane color style')

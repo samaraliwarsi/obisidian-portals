@@ -477,6 +477,7 @@ export class PortalsView extends ItemView {
             disableSidePanelOnMobile: s.disableSidePanelOnMobile,
             enableFileExtensionNonMD: s.enableFileExtensionNonMD,
             highlightFolderNotes: s.highlightFolderNotes,
+            compactTree: s.compactTree,
         });
     }
 
@@ -657,6 +658,9 @@ export class PortalsView extends ItemView {
 
             // Tree content area (scrollable)
             const treeContainer = mainPanel.createDiv({ cls: 'portals-tree-container' });
+            if (this.plugin.settings.compactTree) {
+                treeContainer.addClass('portals-compact-tree');
+            }
 
             // Splitter (draggable)
             const splitter = splitContainer.createDiv({ cls: 'portals-splitter' });

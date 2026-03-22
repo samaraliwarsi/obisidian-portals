@@ -5642,6 +5642,36 @@ body.portals-dragging {
     color: var(--interactive-accent);
 }
 
+/*====COMPACT TREE STYLES====*/
+
+.portals-tree-container.portals-compact-tree {
+    padding-left: 8px;
+}
+
+.portals-tree-container.portals-compact-tree .folder-summary,
+.portals-tree-container.portals-compact-tree .file-item {
+    padding: 2px 8px 2px 8px !important;
+    gap: 4px;
+}
+
+.portals-tree-container.portals-compact-tree .folder-summary .portals-item-name,
+.portals-tree-container.portals-compact-tree .file-item .portals-item-name {
+    font-size: 0.85em;
+    line-height: 1.2;
+    font-weight: normal !important;
+}
+
+.portals-tree-container.portals-compact-tree .folder-icon i,
+.portals-tree-container.portals-compact-tree .file-icon i {
+    font-size: 14px;
+}
+
+/* Optional: reduce indentation of nested children */
+.portals-tree-container.portals-compact-tree .folder-children {
+    margin-left: 14px;
+    padding-left: 10px;
+}
+
 /* ===== Force‑override bottom spacing (fixes theme‑added gaps) ===== */
 
 .portals-container {
