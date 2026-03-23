@@ -4630,10 +4630,6 @@
 /* -------------------- Tree Styles -------------------- */
 /*-Minimal: no Icons/ lines. bullets, low spacing-*/
 
-.portals-tree-style-minimal .folder-details {
-  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-border) 10%, transparent);
-}
-
 .portals-tree-style-minimal .folder-icon,
 .portals-tree-style-minimal .file-icon {
     display: none;
