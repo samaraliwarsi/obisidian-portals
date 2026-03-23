@@ -4670,7 +4670,17 @@
     font-family: inherit;
     font-size: 0.9em;
 }
-
+/*Minimal: Split Tab*/
+.portals-split-content.portals-tree-style-minimal .file-item::before {
+  content: "•";
+    font-family: monospace !important;
+    font-size: 1em;
+    margin-right: 4px;
+    transition: transform 0.15s;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+}
 /*----------------------------------------*/
 /*-Portals: Styled Left Border-*/
 
@@ -4711,6 +4721,14 @@
 .portals-tree-container.portals-compact-tree.portals-tree-style-leftborder .folder-summary {
     padding-left: 8px !important;
 }
+
+/*Portals: Split Tab*/
+.portals-split-content.portals-tree-style-portals .file-item {
+  border-left: 2px solid var(--space-border-color, var(--interactive-accent));
+  border-radius: 4px;
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-hover) 10%, transparent);
+}
+
 
 /*----------------------------------------*/
 /*---Boxed Style---*/
@@ -4757,6 +4775,13 @@
     border-left: 1px dashed color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
 }
 
+/*Boxed: Split Tab*/
+.portals-split-content.portals-tree-style-boxed .file-item {
+  border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  border-radius: 0 0 6px 0;
+  margin: 2px 0; 
+}
 
 /*---------IconPicker Modal-----------*/
 

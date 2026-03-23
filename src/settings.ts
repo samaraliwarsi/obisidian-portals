@@ -97,7 +97,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
         .setName('Compact tree view')
-        .setDesc('Reduce spacing to display more items in the tree.')
+        .setDesc('Reduce spacing to display more items in the folder or tag tree. Does not apply to bookmarks or recents')
         .addToggle(toggle => toggle
             .setValue(this.plugin.settings.compactTree)
             .onChange(async (value) => {
@@ -107,8 +107,8 @@ export class SpacesSettingTab extends PluginSettingTab {
             }));
 
         new Setting(containerEl)
-        .setName('Tree style')
-        .setDesc('Choose a visual theme for the folder and tag trees.')
+        .setName('Styles')
+        .setDesc('Choose a visual theme for file tree, recents & bookmarks. The last theme can carry tab colors, if enabled.')
         .addDropdown(dropdown => dropdown
             .addOption('default', 'Default')
             .addOption('minimal', 'Minimal')
@@ -122,8 +122,8 @@ export class SpacesSettingTab extends PluginSettingTab {
             }));
 
         new Setting(containerEl)
-            .setName('File pane color style')
-            .setDesc('How to apply colors to the file area.')
+            .setName('Background color style')
+            .setDesc('How to apply active tab colors to the file area.')
             .addDropdown(dropdown => dropdown
                 .addOption('gradient', 'Gradient (25% solid → fade)')
                 .addOption('solid', 'Solid')
@@ -137,7 +137,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Tab colors')
-            .setDesc('Show background colors on portal tabs.')
+            .setDesc('Show background colors on portal tab bottom border.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.tabColorEnabled)
                 .onChange(async (value) => {
@@ -170,7 +170,7 @@ export class SpacesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Show extensions for non-markdown files')
-            .setDesc('Display the extensions for files that are not markdown.')
+            .setDesc('Display extensions badge on non-markdown files. Active non-markdown files now use accent over badge instead of dot.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableFileExtensionNonMD)
                 .onChange(async (value) => {
@@ -207,7 +207,7 @@ export class SpacesSettingTab extends PluginSettingTab {
         // - Highlight Folder Notes
         new Setting(containerEl)
         .setName('Highlight folder notes')
-        .setDesc('If enabled, folders with a folder note will have a highlighted icon.')
+        .setDesc('If enabled, folders with a folder note will have a highlighted icon/ badge depending on the chosen style.')
         .addToggle(toggle => toggle
             .setValue(this.plugin.settings.highlightFolderNotes)
             .setDisabled(!this.plugin.settings.enableFolderNotes)
