@@ -479,6 +479,7 @@ export class PortalsView extends ItemView {
             highlightFolderNotes: s.highlightFolderNotes,
             compactTree: s.compactTree,
             boldFolderNames: s.boldFolderNames,
+            treeStyle: s.treeStyle,
         });
     }
 
@@ -659,6 +660,7 @@ export class PortalsView extends ItemView {
 
             // Tree content area (scrollable)
             const treeContainer = mainPanel.createDiv({ cls: 'portals-tree-container' });
+            treeContainer.addClass(`portals-tree-style-${this.plugin.settings.treeStyle}`);
             if (this.plugin.settings.compactTree) {
                 treeContainer.addClass('portals-compact-tree');
             }
@@ -836,6 +838,11 @@ export class PortalsView extends ItemView {
                     const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
                     if (folder && folder instanceof TFolder) {
                         const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
+                        if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
+                            spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
+                        } else {
+                            spaceContent.style.removeProperty('--space-border-color');
+                        }
                         this.applySpaceBackground(spaceContent, selectedSpace.color);
                         this.makeDropTarget(spaceContent, folder, true);
                         this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
@@ -844,6 +851,11 @@ export class PortalsView extends ItemView {
                     }
                 } else {
                     const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
+                    if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
+                            spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
+                        } else {
+                            spaceContent.style.removeProperty('--space-border-color');
+                        }
                     this.applySpaceBackground(spaceContent, selectedSpace.color);
                     this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags);
                 }
@@ -1446,6 +1458,11 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
             if (folder && folder instanceof TFolder) {
                 const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
+                if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
+                            spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
+                        } else {
+                            spaceContent.style.removeProperty('--space-border-color');
+                        }
                 this.applySpaceBackground(spaceContent, selectedSpace.color);
                 this.makeDropTarget(spaceContent, folder, true);
                 this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
@@ -1454,6 +1471,11 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             }
         } else {
             const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
+            if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
+                            spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
+                        } else {
+                            spaceContent.style.removeProperty('--space-border-color');
+                        }
             this.applySpaceBackground(spaceContent, selectedSpace.color);
             this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags);
         }
@@ -2130,6 +2152,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         iconSpan.createEl('i', { cls: `ph ph-${iconName}` });
         if (this.plugin.settings.enableFolderNotes && this.plugin.settings.highlightFolderNotes && this.hasFolderNote(folder)) {
             iconSpan.addClass('has-folder-note');
+            summary.addClass('has-folder-note');
         }
 
         const displayName = folder.path === '/' ? this.app.vault.getName() : folder.name;

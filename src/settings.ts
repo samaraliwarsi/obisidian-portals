@@ -37,6 +37,7 @@ export interface SpacesSettings {
     highlightFolderNotes: boolean;
     compactTree: boolean;
     boldFolderNames: boolean;
+    treeStyle: 'default' | 'minimal' | 'boxed' | 'portals';
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -66,6 +67,7 @@ export const DEFAULT_SETTINGS: SpacesSettings = {
     highlightFolderNotes: true,
     compactTree: false,
     boldFolderNames: false,
+    treeStyle: 'default'
 };
 
 export class SpacesSettingTab extends PluginSettingTab {
@@ -122,6 +124,21 @@ export class SpacesSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.compactTree)
             .onChange(async (value) => {
                 this.plugin.settings.compactTree = value;
+                await this.plugin.saveSettings();
+                this.display();
+            }));
+
+        new Setting(containerEl)
+        .setName('Tree style')
+        .setDesc('Choose a visual theme for the folder and tag trees.')
+        .addDropdown(dropdown => dropdown
+            .addOption('default', 'Default')
+            .addOption('minimal', 'Minimal')
+            .addOption('boxed', 'Boxed')
+            .addOption('portals', 'Portals')
+            .setValue(this.plugin.settings.treeStyle)
+            .onChange(async (value: 'default' | 'minimal' | 'boxed' | 'portals') => {
+                this.plugin.settings.treeStyle = value;
                 await this.plugin.saveSettings();
                 this.display();
             }));

@@ -4625,11 +4625,144 @@
 
 /* =========== END OF PHOSPHOR ICONS ============ */
 
-
-
 /* =========== PORTAL PLUGIN CORE STYLES =========== */
 
-/*---IconPicker Modal---*/
+/* -------------------- Tree Styles -------------------- */
+/*-Minimal: no Icons/ lines. bullets, low spacing-*/
+
+.portals-tree-style-minimal .folder-details {
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-border) 10%, transparent);
+}
+
+.portals-tree-style-minimal .folder-icon,
+.portals-tree-style-minimal .file-icon {
+    display: none;
+}
+
+.portals-tree-style-minimal .folder-summary::before {
+    content: "•";
+    font-family: monospace !important;
+    font-size: 1em;
+    margin-right: 4px;
+    transition: transform 0.15s;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+}
+.portals-tree-style-minimal details[open] > .folder-summary::before {
+    content: "◦";
+    transform: rotate(0deg);
+
+}
+
+.portals-tree-style-minimal .folder-children {
+    border-left: none;
+    margin-left: 24px;
+    padding-left: 6px;
+}
+
+.portals-tree-style-minimal .folder-summary,
+.portals-tree-style-minimal .file-item {
+    gap: 4px;
+}
+
+.portals-tree-style-minimal .folder-summary.has-folder-note::before {
+    color: var(--interactive-accent);
+}
+
+.portals-tree-style-minimal .portals-item-name {
+    font-family: inherit;
+    font-size: 0.9em;
+}
+
+/*----------------------------------------*/
+/*-Portals: Styled Left Border-*/
+
+.portals-tree-style-portals .folder-details {
+  border-left: 2px solid var(--space-border-color, var(--interactive-accent));
+  border-radius: 4px;
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-hover) 10%, transparent);
+}
+
+.portals-tree-style-portals .folder-summary {
+    margin-left: 0;
+    padding-left: 12px !important;
+    transition: background-color 0.1s;
+    box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-hover) 10%, transparent);
+}
+
+.portals-tree-style-portals .folder-summary:hover,
+.portals-tree-style-portals .file-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.portals-tree-style-portals .folder-children {
+    border-left: none;
+}
+
+.portals-tree-style-portals .folder-children {
+    margin-left: 16px;
+    padding-bottom: 2px;
+}
+
+/*Portals: Compact Mode*/
+.portals-tree-container.portals-compact-tree.portals-tree-style-leftborder .folder-children {
+    margin-left: 16px;
+}
+.portals-tree-container.portals-compact-tree.portals-tree-style-leftborder .folder-details {
+    margin: 1px 0;
+}
+.portals-tree-container.portals-compact-tree.portals-tree-style-leftborder .folder-summary {
+    padding-left: 8px !important;
+}
+
+/*----------------------------------------*/
+/*---Boxed Style---*/
+.portals-tree-style-boxed details {
+    border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+    border-radius: 6px;
+    margin: 2px 0; 
+}
+
+.portals-tree-style-boxed summary {
+    padding: 4px 8px !important;
+    margin: 0;
+    border-radius: 6px;
+}
+
+.portals-tree-style-boxed details[open] summary {
+    border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+.portals-tree-style-boxed .folder-children details {
+    border: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+    border-radius: 0px 0px 6px 0px;
+    margin: 1px 0;
+    padding-left: 6px;
+}
+
+.portals-tree-style-boxed .folder-children details summary {
+    border: none;
+    padding: 2px 8px 2px 4px !important;
+}
+
+.portals-tree-style-boxed .folder-children details[open] summary {
+    border-bottom: none;
+}
+
+.portals-tree-style-boxed .file-item {
+    margin: 2px 0;
+    padding: 2px 8px !important;
+}
+
+.portals-tree-style-boxed .folder-children {
+    margin-left: 16px;
+    border-left: 1px dashed color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+
+/*---------IconPicker Modal-----------*/
 
 .portals-icon-grid {
     display: grid;
