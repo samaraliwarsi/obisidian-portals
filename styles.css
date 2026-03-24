@@ -4653,7 +4653,7 @@
 
 .portals-tree-style-minimal .folder-children {
     border-left: none;
-    margin-left: 24px;
+    margin-left: 20px;
     padding-left: 6px;
 }
 
@@ -4707,7 +4707,7 @@
 }
 
 .portals-tree-style-portals .folder-children {
-    margin-left: 16px;
+    margin-left: 18px;
     padding-bottom: 2px;
 }
 
@@ -4777,7 +4777,7 @@
 }
 
 .portals-tree-style-boxed .folder-children {
-    margin-left: 20px;
+    margin-left: 16px;
     border-left: none;
 }
 
@@ -5062,11 +5062,11 @@ color: var(--text-normal);
 .portals-tab.is-active {
 background: transparent;
 color: var(--text-normal);
-border-bottom-color: var(--tab-active-color, var(--interactive-accent)); 
+border-bottom-color: var(--tab-active-color, var(--interactive-accent));
 }
 
 .portals-tab-pinned {
-border-left: 2px solid var(--tab-pinner-color, transparent);
+border-left: 2px solid var(--tab-pinned-color, var(--interactive-accent));
 }
 
 .portals-tab-pinned:not(.is-active) {
@@ -5188,7 +5188,7 @@ background-color: var(--background-modifier-hover);
 
 .folder-children {
 margin-left: 18px;
-padding-left: 8px;
+padding-left: 6px;
 border-left: 1px dashed var(--background-modifier-border);
 }
 
