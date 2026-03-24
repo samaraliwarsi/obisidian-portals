@@ -4729,28 +4729,34 @@
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-hover) 10%, transparent);
 }
 
-
 /*----------------------------------------*/
 /*---Boxed Style---*/
 .portals-tree-style-boxed details {
     border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-    border-radius: 6px;
-    margin: 2px 0; 
+    border-radius: 8px;
+    margin: 2px 0;
 }
 
 .portals-tree-style-boxed summary {
     padding: 4px 8px !important;
     margin: 0;
-    border-radius: 6px;
+    border-radius: 6px 6px 0 6px;
+}
+
+.portals-tree-style-boxed .folder-summary {
+  background-color: transparent !important;
+}
+
+.portals-tree-style-boxed .folder-summary:hover {
+  background-color: var(--background-modifier-hover) !important;
 }
 
 .portals-tree-style-boxed details[open] summary {
-    border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent) !important;
 }
 
 .portals-tree-style-boxed .folder-children details {
     border: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
     border-radius: 0px 0px 6px 0px;
     margin: 1px 0;
     padding-left: 6px;
@@ -4758,7 +4764,7 @@
 
 .portals-tree-style-boxed .folder-children details summary {
     border: none;
-    padding: 2px 8px 2px 4px !important;
+    padding: 4px 8px 4px 4px !important;
 }
 
 .portals-tree-style-boxed .folder-children details[open] summary {
@@ -4767,19 +4773,18 @@
 
 .portals-tree-style-boxed .file-item {
     margin: 2px 0;
-    padding: 2px 8px !important;
+    padding: 4px 8px !important;
 }
 
 .portals-tree-style-boxed .folder-children {
-    margin-left: 16px;
-    border-left: 1px dashed color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+    margin-left: 20px;
+    border-left: none;
 }
 
 /*Boxed: Split Tab*/
 .portals-split-content.portals-tree-style-boxed .file-item {
   border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  border-right: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 0 6px;
   margin: 2px 0; 
 }
 
