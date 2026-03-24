@@ -4685,7 +4685,7 @@
 /*-Portals: Styled Left Border-*/
 
 .portals-tree-style-portals .folder-details {
-  border-left: 2px solid var(--space-border-color, var(--interactive-accent));
+  border-left: 1px solid var(--space-border-color, var(--interactive-accent));
   border-radius: 4px;
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-hover) 10%, transparent);
 }
@@ -4707,7 +4707,7 @@
 }
 
 .portals-tree-style-portals .folder-children {
-    margin-left: 18px;
+    margin-left: 16px;
     padding-bottom: 2px;
 }
 
@@ -4724,7 +4724,7 @@
 
 /*Portals: Split Tab*/
 .portals-split-content.portals-tree-style-portals .file-item {
-  border-left: 2px solid var(--space-border-color, var(--interactive-accent));
+  border-left: 1px solid var(--space-border-color, var(--interactive-accent));
   border-radius: 4px;
   box-shadow: 0 1px 0 0 color-mix(in srgb, var(--background-modifier-hover) 10%, transparent);
 }
@@ -4777,7 +4777,7 @@
 }
 
 .portals-tree-style-boxed .folder-children {
-    margin-left: 16px;
+    margin-left: 18px;
     border-left: none;
 }
 

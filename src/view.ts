@@ -778,6 +778,17 @@ export class PortalsView extends ItemView {
 
             // Content area (collapsible)
             secondaryPanel.createDiv({ cls: 'portals-split-content' });
+            const splitContent = secondaryPanel.querySelector('.portals-split-content') as HTMLElement;
+
+            if (this.plugin.settings.treeStyle === 'portals') {
+                if (rootColor) {
+                    splitContent.style.setProperty('--space-border-color', rootColor);
+                } else {
+                    splitContent.style.removeProperty('--space-border-color');
+                }
+            } else {
+                splitContent.style.removeProperty('--space-border-color');
+            }
 
             // Set initial state
             const sidePanelEnabled = this.isSidePanelEnabled();
