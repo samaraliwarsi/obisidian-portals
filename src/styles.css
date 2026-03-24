@@ -5293,7 +5293,7 @@ opacity: 0.7;
 .portals-floating-btn {
   -webkit-tap-highlight-color: transparent;
   position: absolute;
-  left: 12px;
+  left: 4px;
   z-index: 10;
   width: 32px;
   height: 32px;
