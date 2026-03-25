@@ -1682,7 +1682,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                     shadeOpacity = minOpacity
                 } else {
                     const progress = groupIndex / (total -1);
-                    shadeOpacity = minOpacity + progress * (maxOpacity - minOpacity);
+                    shadeOpacity = maxOpacity - progress * (maxOpacity - minOpacity);
                 }
                 shadeOpacity = Math.min(maxOpacity, Math.max(minOpacity, shadeOpacity));
 
