@@ -37,7 +37,7 @@ export interface SpacesSettings {
     highlightFolderNotes: boolean;
     compactTree: boolean;
     boldFolderNames: boolean;
-    treeStyle: 'default' | 'minimal' | 'boxed' | 'portals';
+    treeStyle: 'default' | 'minimal' | 'boxed' | 'portals' | 'shades';
 }
 
 export const DEFAULT_SETTINGS: SpacesSettings = {
@@ -114,6 +114,7 @@ export class SpacesSettingTab extends PluginSettingTab {
             .addOption('minimal', 'Minimal')
             .addOption('boxed', 'Boxed')
             .addOption('portals', 'Portals')
+            .addOption('shades', 'Shades')
             .setValue(this.plugin.settings.treeStyle)
             .onChange(async (value: 'default' | 'minimal' | 'boxed' | 'portals') => {
                 this.plugin.settings.treeStyle = value;

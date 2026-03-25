@@ -848,6 +848,8 @@ export class PortalsView extends ItemView {
                 if (selectedSpace.type === 'folder') {
                     const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
                     if (folder && folder instanceof TFolder) {
+                        // count direct children folders at first level
+                        const totalFirstLevelFolders = folder.children.filter(c => c instanceof TFolder).length;
                         const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
                         if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
                             spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
@@ -856,7 +858,7 @@ export class PortalsView extends ItemView {
                         }
                         this.applySpaceBackground(spaceContent, selectedSpace.color);
                         this.makeDropTarget(spaceContent, folder, true);
-                        this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
+                        this.buildFolderTree(folder, spaceContent, selectedSpace.icon, 0, 0, totalFirstLevelFolders);
                     } else {
                         treeContainer.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
                     }
@@ -1469,6 +1471,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         if (selectedSpace.type === 'folder') {
             const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
             if (folder && folder instanceof TFolder) {
+                const totalFirstLevelFolders = folder.children.filter(c => c instanceof TFolder).length;
                 const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
                 if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
                             spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
@@ -1477,7 +1480,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                         }
                 this.applySpaceBackground(spaceContent, selectedSpace.color);
                 this.makeDropTarget(spaceContent, folder, true);
-                this.buildFolderTree(folder, spaceContent, selectedSpace.icon);
+                this.buildFolderTree(folder, spaceContent, selectedSpace.icon, 0, 0, totalFirstLevelFolders);
             } else {
                 treeContainer.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
             }
@@ -2149,7 +2152,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         });
     }
 
-    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder') {
+    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder', depth: number = 0, index: number = 0, totalFirstLevelFolders: number = 0) {
         const details = container.createEl('details');
         details.addClass('folder-details');
 
@@ -2206,18 +2209,46 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             e.preventDefault();
             this.showFolderContextMenu(e, folder, summary);
         });
-
-        
+                
         const childrenContainer = details.createDiv({ cls: 'folder-children' });
+
+        // For first-level folders (depth === 1) when using shades style
+        if (depth === 1 && this.plugin.settings.treeStyle === 'shades') {
+            const minOpacity = 0.1;
+            const maxOpacity = 0.3;
+            let shadeOpacity;
+
+            const total = totalFirstLevelFolders > 0 ? totalFirstLevelFolders : 1;
+
+            if (total <= 1) {
+                shadeOpacity = minOpacity
+            } else {
+                const progress = index / (total - 1);
+                shadeOpacity = maxOpacity - progress * (maxOpacity - minOpacity);
+                shadeOpacity = Math.min(maxOpacity, Math.max(minOpacity, shadeOpacity));
+            }
+            // clamp to safe range
+            shadeOpacity = Math.min(maxOpacity, Math.max(minOpacity, shadeOpacity));
+
+            summary.classList.add('shaded-folder-summary');
+            summary.style.setProperty('--folder-shade-opacity', String(shadeOpacity));
+            childrenContainer.classList.add('shaded-folder-children');
+            childrenContainer.style.setProperty('--folder-shade-opacity', String(shadeOpacity));
+        }
+    
+        
 
         const loadChildren = () => {
             if (childrenContainer.children.length > 0) return;
 
             const sorted = this.sortFolderChildren(Array.from(folder.children));
 
+            let childIndex = 0;
+
             for (const child of sorted) {
                 if (child instanceof TFolder) {
-                    this.buildFolderTree(child, childrenContainer, 'folder');
+                    this.buildFolderTree(child, childrenContainer, 'folder', depth +1, childIndex, totalFirstLevelFolders);
+                    childIndex++;
                 }   else if (child instanceof TFile) {
                     const isFolderNoteFile = this.isFolderNote(child, folder);
                     if (isFolderNoteFile && this.plugin.settings.enableFolderNotes) {

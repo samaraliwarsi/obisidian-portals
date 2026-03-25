@@ -4788,6 +4788,82 @@
   margin: 2px 0; 
 }
 
+/*----------------------------------------*/
+/*---Shades Style---*/
+
+.portals-tree-style-shades .folder-summary.shaded-folder-summary {
+    background-color: rgba(128, 128, 128, var(--folder-shade-opacity, 0.15));
+    border-radius: 4px;
+    margin: 2px 0;
+    padding: 4px 8px !important;
+}
+
+.portals-tree-style-shades details[open] > .folder-summary.shaded-folder-summary {
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 0;
+}
+
+.portals-tree-style-shades .folder-children.shaded-folder-children {
+    background-color: rgba(115, 115, 115, var(--folder-shade-opacity, 0.15));
+    border-radius: 0 0 4px 4px;
+    margin: 0 0 4px 0; 
+    padding: 4px 0 4px 8px;
+    border-left: none;
+}
+
+.portals-tree-style-shades .folder-children {
+  border-left: none;
+  margin-left: 16px;
+  padding-left: 8px;
+}
+
+.portals-tree-style-shades .folder-icon,
+.portals-tree-style-shades .file-icon {
+    display: none;
+}
+
+.portals-tree-style-shades .folder-summary::before {
+    content: "•";
+    font-family: monospace !important;
+    font-size: 1em;
+    margin-right: 2px;
+    transition: transform 0.15s;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+}
+.portals-tree-style-shades details[open] > .folder-summary::before {
+    content: "◦";
+    transform: rotate(0deg);
+}
+
+.portals-tree-style-shades .folder-summary.has-folder-note::before {
+    color: var(--interactive-accent);
+}
+
+.portals-tree-style-shades .folder-summary.shaded-folder-summary:hover {
+    background-color: rgba(128, 128, 128, min(calc(var(--folder-shade-opacity, 0.15) + 0.1), 0.9));
+}
+
+.portals-tree-style-shades details[open] > .folder-children > .folder-details:first-child > .folder-summary {
+    margin-top: 0;
+}
+
+.portals-tree-style-shades .portals-space-content > .folder-details > .folder-children {
+    border-left: 1px dashed var(--background-modifier-border);
+}
+
+/* compact */ 
+
+.portals-tree-container.portals-compact-tree.portals-tree-style-shades .folder-children.shaded-folder-children {
+    margin-left: 0 !important;   /* set to measured bullet offset */
+    padding-left: 12px !important;
+}
+
+.portals-tree-container.portals-compact-tree.portals-tree-style-shades .folder-children {
+  margin-left: 12px;
+  padding-left: 8px;
+}
 /*---------IconPicker Modal-----------*/
 
 .portals-icon-grid {
