@@ -4804,10 +4804,10 @@
 }
 
 .portals-tree-style-shades .folder-children.shaded-folder-children {
-    background-color: rgba(115, 115, 115, var(--folder-shade-opacity, 0.15));
+    background-color: rgba(100, 100, 100, var(--folder-shade-opacity, 0.15));
     border-radius: 0 0 4px 4px;
     margin: 0 0 4px 0; 
-    padding: 4px 0 4px 8px;
+    padding: 4px 0 4px 16px;
     border-left: none;
 }
 
@@ -4857,7 +4857,7 @@
 
 .portals-tree-container.portals-compact-tree.portals-tree-style-shades .folder-children.shaded-folder-children {
     margin-left: 0 !important;   /* set to measured bullet offset */
-    padding-left: 12px !important;
+    padding-left: 14px !important;
 }
 
 .portals-tree-container.portals-compact-tree.portals-tree-style-shades .folder-children {

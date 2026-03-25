@@ -863,6 +863,8 @@ export class PortalsView extends ItemView {
                         treeContainer.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
                     }
                 } else {
+                    // count groups chosen
+                    const groupCount = selectedSpace.groupTags?.length ?? 0;
                     const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
                     if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
                             spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
@@ -870,7 +872,7 @@ export class PortalsView extends ItemView {
                             spaceContent.style.removeProperty('--space-border-color');
                         }
                     this.applySpaceBackground(spaceContent, selectedSpace.color);
-                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags);
+                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags, 0, 0, groupCount);
                 }
             }
 
@@ -1485,6 +1487,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                 treeContainer.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
             }
         } else {
+            const groupCount = selectedSpace.groupTags?.length ?? 0;
             const spaceContent = treeContainer.createEl('div', { cls: 'portals-space-content' });
             if (this.plugin.settings.tabColorEnabled && selectedSpace.color && selectedSpace.color !== 'transparent') {
                             spaceContent.style.setProperty('--space-border-color', selectedSpace.color);
@@ -1492,7 +1495,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                             spaceContent.style.removeProperty('--space-border-color');
                         }
             this.applySpaceBackground(spaceContent, selectedSpace.color);
-            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags);
+            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags, 0, 0, groupCount);
         }
     }
 
@@ -1532,7 +1535,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         return file.name;
     }
 
-    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string, groupTags?: string[]) {
+    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string, groupTags?: string[], depth: number = 0, index: number = 0, totalGroups: number = 0) {
         const tag = '#' + tagName;
         const allFiles = this.app.vault.getMarkdownFiles();
         const taggedFiles = allFiles.filter(file => {
@@ -1559,6 +1562,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             if (sortOrder === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
             else return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
         });
+        
 
         // Create main details element for the tag
         const mainDetails = container.createEl('details', { cls: 'folder-details' });
@@ -1655,6 +1659,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         }
 
         // Render each group as a nested details element (always open)
+        let groupIndex = 0;
         for (const [gTag, files] of groups.entries()) {
             if (files.length === 0) continue;
             const groupDetails = childrenContainer.createEl('details', { cls: 'folder-details' });
@@ -1665,10 +1670,32 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                 groupDetails.open = false; // default closed
             }
             const summary = groupDetails.createEl('summary', { cls: 'folder-summary' });
+            const groupChildren = groupDetails.createDiv({ cls: 'folder-children' });
+
+            // Shading
+            if (depth === 0 && this.plugin.settings.treeStyle === 'shades') {
+                const minOpacity = .1;
+                const maxOpacity = .4;
+                let shadeOpacity;
+                const total = totalGroups > 0 ? totalGroups : 1;
+                if (total <= 1) {
+                    shadeOpacity = minOpacity
+                } else {
+                    const progress = groupIndex / (total -1);
+                    shadeOpacity = minOpacity + progress * (maxOpacity - minOpacity);
+                }
+                shadeOpacity = Math.min(maxOpacity, Math.max(minOpacity, shadeOpacity));
+
+                summary.classList.add('shaded-folder-summary');
+                summary.style.setProperty('--folder-shade-opacity', String(shadeOpacity));
+                groupChildren.classList.add('shaded-folder-children');
+                groupChildren.style.setProperty('--folder-shade-opacity', String(shadeOpacity));
+            }
+
             const iconSpan = summary.createSpan({ cls: 'folder-icon' });
             iconSpan.createEl('i', { cls: 'ph ph-tag-simple' });
             summary.createSpan({ text: '#' + gTag }).addClass('portals-item-name');
-            const groupChildren = groupDetails.createDiv({ cls: 'folder-children' });
+            
             for (const file of sortFiles(files)) {
                 createFileItem(file, groupChildren);
             }
@@ -1686,6 +1713,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                 this.plugin.settings.expandedGroups[tagName] = expanded;
                 void this.plugin.saveSettings(); // no re‑render because hash unchanged
             });
+            groupIndex++;
         }
 
         // Render ungrouped files directly under main tag
