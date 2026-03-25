@@ -4853,7 +4853,7 @@
     border-left: 1px dashed var(--background-modifier-border);
 }
 
-/* compact */ 
+/* Shades - compact tree */ 
 
 .portals-tree-container.portals-compact-tree.portals-tree-style-shades .folder-children.shaded-folder-children {
     margin-left: 0 !important;   /* set to measured bullet offset */
@@ -4863,6 +4863,13 @@
 .portals-tree-container.portals-compact-tree.portals-tree-style-shades .folder-children {
   margin-left: 12px;
   padding-left: 8px;
+}
+
+/*Boxed: Split Tab*/
+.portals-split-content.portals-tree-style-shades .file-item {
+  background-color: rgba(100, 100, 100, var(--folder-shade-opacity, 0.15));
+  border-radius: 4px;
+  margin: 4px 0; 
 }
 /*---------IconPicker Modal-----------*/
 
