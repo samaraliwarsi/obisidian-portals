@@ -5779,7 +5779,6 @@ body.portals-dragging {
 
 /* ----- Mobile overrides (max-width: 768px) ----- */
 @media (max-width: 768px) {
-  /* Stack the two rows vertically */
   .portals-portal-controls {
     flex-direction: column;
     align-items: flex-start;
@@ -5792,27 +5791,33 @@ body.portals-dragging {
     justify-content: flex-start;
   }
 
-  /* Center the color row (number input, preview, trash) */
   .portals-color-row {
     margin-top: 4px;
+    flex-wrap: nowrap;
+    gap: 8px;
     justify-content: center;
   }
 
-  /* Slightly larger icon badge */
   .portals-icon-badge {
     padding: 4px 6px;
     font-size: 0.8em;
   }
 
-  /* Larger color picker elements */
   .portals-color-compact {
-    gap: 6px; /* a bit more spacing */
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 auto;
   }
 
-  .portals-color-compact input[type="color"] {
-    width: 32px;
-    height: 32px;                /* make it square */
-    border-radius: 8px;          /* rounded corners */
+  .portals-color-compact .portals-color-input {
+    width: 50px !important;
+    height: 30px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    border-radius: 4px;
+    flex-shrink: 0;
     -webkit-appearance: none;
     appearance: none;
     padding: 0;
@@ -5821,29 +5826,24 @@ body.portals-dragging {
   }
 
   .portals-color-compact input[type="number"] {
-    width: 80px;
-    height: 40px;
+    width: 70px;
+    height: 30px;
     font-size: 1em;
     padding: 4px 8px;
+    flex-shrink: 1;
   }
 
-  .portals-color-compact .portals-color-preview {
-    width: 30px;
-    height: 30px;
-  }
-
-  /* Percent sign next to number input */
   .portals-color-compact span {
     font-size: 1.2em;
     margin-left: 4px;
+    flex-shrink: 0;
   }
 
-  /* Larger trash icon (and any other clickable icons) */
-  .clickable-icon {
+  .portals-color-row > .clickable-icon {
     width: 40px;
     height: 40px;
-    /* Obsidian likely sets font-size automatically, but you can add: */
     font-size: 1.2em;
+    flex-shrink: 0;
   }
 
   .portals-secondary-panel.is-collapsed {

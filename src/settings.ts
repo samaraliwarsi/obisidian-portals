@@ -362,9 +362,6 @@ export class SpacesSettingTab extends PluginSettingTab {
             // Percent sign
             colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
 
-            // Preview swatch
-            const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
-
             const updateColor = () => {
                 const hex = colorInput.value;
                 const opacity = parseInt(opacityInput.value) / 100;
@@ -374,7 +371,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                 const b = parseInt(hex.slice(5,7), 16);
                 const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                 rootSpace.color = rgba;
-                preview.style.setProperty('--preview-color', rgba);
                 void this.plugin.saveSettings();
             };
 
@@ -533,10 +529,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                 });
                 colorContainer.createSpan({ cls: 'portals-percent', text: '%' });
 
-               
-
-                const preview = colorContainer.createEl('span', { cls: 'portals-color-preview' });
-
                 const updateColor = () => {
                     const hex = colorInput.value;
                     const opacity = parseInt(opacityInput.value) / 100;
@@ -545,7 +537,6 @@ export class SpacesSettingTab extends PluginSettingTab {
                     const b = parseInt(hex.slice(5,7), 16);
                     const rgba = `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     portal.color = rgba;
-                    preview.style.setProperty('--preview-color', rgba);
                     void this.plugin.saveSettings();
                 };
 
