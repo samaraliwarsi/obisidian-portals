@@ -101,6 +101,27 @@ export class PortalsView extends ItemView {
     }
 
     private handleRename(file: TAbstractFile, oldPath: string) {
+        // Handle folder rename
+        if (file instanceof TFolder) {
+            // Update openFolders: replace old path with new path
+            const openFolders = this.plugin.settings.openFolders;
+            const index = openFolders.indexOf(oldPath);
+            if (index !== -1) {
+                openFolders[index] = file.path;
+                void this.plugin.saveSettings();
+            }
+            // Update selectedSpace if it was this folder
+            if (this.plugin.settings.selectedSpace?.type === 'folder' && 
+                this.plugin.settings.selectedSpace.path === oldPath) {
+                this.plugin.settings.selectedSpace.path = file.path;
+                void this.plugin.saveSettings();
+            }
+            // Force a full render to update the UI with the new name
+            this.scheduleRender();
+            return;
+        }
+
+        // Handle file rename (existing logic)
         if (!(file instanceof TFile)) {
             this.scheduleRender();
             return;
@@ -133,10 +154,6 @@ export class PortalsView extends ItemView {
         // Update map key
         this.fileElementMap.delete(oldPath);
         this.fileElementMap.set(file.path, element);
-
-        // Optional: update open‑dot (if file open status changed)
-        const wasOpen = this.selectedFiles.has(oldPath) || this.isFileOpen(file);
-        // For simplicity, we don't update the dot here; it will be corrected on next full render.
     }
 
     private collapseAllFolders() {
