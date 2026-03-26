@@ -4865,12 +4865,13 @@
   padding-left: 8px;
 }
 
-/*Boxed: Split Tab*/
+/*Shades: Split Tab*/
 .portals-split-content.portals-tree-style-shades .file-item {
   background-color: rgba(100, 100, 100, var(--folder-shade-opacity, 0.15));
   border-radius: 4px;
   margin: 4px 0; 
 }
+
 /*---------IconPicker Modal-----------*/
 
 .portals-icon-grid {

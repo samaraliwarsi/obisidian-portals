@@ -41,6 +41,7 @@ export class PortalsView extends ItemView {
     private renderTimer: number | null = null;
     private folderNoteCache = new Map<string, { element: HTMLElement; component: Component }>();
     private folderNoteScrollPositions = new Map<string, number>();
+    private fileElementMap = new Map<string, HTMLElement>();
     private getCurrentFolderNote(): TFile | null {
         const selectedSpace = this.plugin.settings.selectedSpace;
         if (!selectedSpace || selectedSpace.type !== 'folder') return null;
@@ -99,6 +100,45 @@ export class PortalsView extends ItemView {
         }, 50); // 50ms delay – adjust as needed
     }
 
+    private handleRename(file: TAbstractFile, oldPath: string) {
+        if (!(file instanceof TFile)) {
+            this.scheduleRender();
+            return;
+        }
+
+        // If the file moved to a different folder, fall back to full render
+        const oldDir = oldPath.substring(0, oldPath.lastIndexOf('/'));
+        const newDir = file.parent?.path || '';
+        if (oldDir !== newDir) {
+            this.scheduleRender();
+            return;
+        }
+
+        const element = this.fileElementMap.get(oldPath);
+        if (!element) {
+            // Element not in current space; fall back to full render
+            this.scheduleRender();
+            return;
+        }
+
+        // Update displayed name
+        const nameSpan = element.querySelector('.portals-item-name') as HTMLElement;
+        if (nameSpan) {
+            nameSpan.innerText = this.getDisplayName(file);
+        }
+
+        // Update data‑path attribute
+        element.dataset.path = file.path;
+
+        // Update map key
+        this.fileElementMap.delete(oldPath);
+        this.fileElementMap.set(file.path, element);
+
+        // Optional: update open‑dot (if file open status changed)
+        const wasOpen = this.selectedFiles.has(oldPath) || this.isFileOpen(file);
+        // For simplicity, we don't update the dot here; it will be corrected on next full render.
+    }
+
     private collapseAllFolders() {
         (async () => {
             const currentSpace = this.plugin.settings.selectedSpace;
@@ -140,7 +180,7 @@ export class PortalsView extends ItemView {
     async onOpen() {
         this.render();
 
-        const renameRef = this.app.vault.on('rename', () => this.scheduleRender());
+        const renameRef = this.app.vault.on('rename', (file, oldPath) => this.handleRename(file, oldPath));
         const deleteRef = this.app.vault.on('delete', () => this.scheduleRender());
         const createRef = this.app.vault.on('create', () => this.scheduleRender());
 
@@ -194,6 +234,7 @@ export class PortalsView extends ItemView {
                 }
             }
         };
+        
         const folderNoteRenameRef = this.app.vault.on('rename', refreshFolderNotes);
         const folderNoteDeleteRef = this.app.vault.on('delete', refreshFolderNotes);
         const folderNoteCreateRef = this.app.vault.on('create', refreshFolderNotes);
@@ -1463,6 +1504,8 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         if (!treeContainer) return;
         treeContainer.empty();
 
+        this.fileElementMap.clear();
+
         const spaces = this.plugin.settings.spaces;
         const selectedSpace = spaces.find(s => 
             s.path === this.plugin.settings.selectedSpace?.path && 
@@ -1626,6 +1669,8 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                 e.preventDefault();
                 this.showFileContextMenu(e, file, fileEl);
             });
+            this.fileElementMap.set(file.path, fileEl);
+            return fileEl;
         };
 
         // If no groups, just list all files under the main tag
@@ -2333,6 +2378,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                         e.preventDefault();
                         this.showFileContextMenu(e, child, fileEl);
                     });
+                    this.fileElementMap.set(child.path, fileEl);
                 }
             }
         };
