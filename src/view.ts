@@ -40,6 +40,8 @@ export class PortalsView extends ItemView {
     private bookmarksListenerRef: unknown = null;
     private renderTimer: number | null = null;
     private folderNoteCache = new Map<string, { element: HTMLElement; component: Component }>();
+    private folderNoteAccessOrder: string[] = [];
+    private readonly MAX_FOLDER_NOTE_CACHE = 10;
     private folderNoteScrollPositions = new Map<string, number>();
     private fileElementMap = new Map<string, HTMLElement>();
     private getCurrentFolderNote(): TFile | null {
@@ -61,7 +63,10 @@ export class PortalsView extends ItemView {
 
     private invalidateFolderNoteCache(file: TFile) {
         this.folderNoteCache.delete(file.path);
+        const idx = this.folderNoteAccessOrder.indexOf(file.path);
+        if (idx !== -1) this.folderNoteAccessOrder.splice(idx, 1);
     }
+
     private toggleFloatingButtonsCollapse(e: MouseEvent) {
         e.preventDefault();
         const el = e.currentTarget as HTMLElement;
@@ -338,6 +343,7 @@ export class PortalsView extends ItemView {
         }
         this.folderNoteCache.clear();
         this.folderNoteScrollPositions.clear();
+        this.folderNoteAccessOrder = [];
 
         document.removeEventListener('mousemove', this.handleDragMove);
         document.removeEventListener('touchmove', this.handleDragMove);
@@ -1389,15 +1395,22 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         }
 
         // Check cache
-        const cached = this.folderNoteCache.get(targetFile.path);
+        const filePath = targetFile.path;
+        let cached = this.folderNoteCache.get(filePath);
         if (cached) {
+            // update access order: move this file to end (most recent)
+            const idx = this.folderNoteAccessOrder.indexOf(filePath);
+            if (idx !== -1) this.folderNoteAccessOrder.splice(idx, 1);
+            this.folderNoteAccessOrder.push(filePath);
+
+            // use cached element
             contentEl.empty();
             contentEl.appendChild(cached.element);
             // Restore scroll position if stored
-            const savedScroll = this.folderNoteScrollPositions.get(targetFile.path);
+            const savedScroll = this.folderNoteScrollPositions.get(filePath);
             if (savedScroll !== undefined) {
                 cached.element.scrollTop = savedScroll;
-                this.folderNoteScrollPositions.delete(targetFile.path);
+                this.folderNoteScrollPositions.delete(filePath);
             }
             return;
         }
@@ -1414,15 +1427,32 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                 await this.processEmbeds(noteContainer, component, targetFile.path);
 
                 // Store in cache
-                this.folderNoteCache.set(targetFile.path, { element: noteContainer, component });
-                const savedScroll = this.folderNoteScrollPositions.get(targetFile.path);
+                this.folderNoteCache.set(filePath, { element: noteContainer, component });
+                this.folderNoteAccessOrder.push(filePath);
+                
+                // evit least reent used if cache exceeds limit
+                if (this.folderNoteCache.size > this.MAX_FOLDER_NOTE_CACHE) {
+                    const oldest = this.folderNoteAccessOrder.shift();
+                    if (oldest) {
+                        const evicted = this.folderNoteCache.get(oldest);
+                        if (evicted) {
+                            this.removeChild(evicted.component);
+                            evicted.element.remove();
+
+                            this.folderNoteCache.delete(oldest);
+                        }
+                    }
+                }
+
+                // restore scroll position if stored
+                const savedScroll = this.folderNoteScrollPositions.get(filePath)
                 if (savedScroll !== undefined) {
                     noteContainer.scrollTop = savedScroll;
-                    this.folderNoteScrollPositions.delete(targetFile.path);
+                    this.folderNoteScrollPositions.delete(filePath);
                 }
 
                 // Append to contentEl (if still relevant)
-                if (this.plugin.settings.activeSplitTab === 'folder-notes') {
+                if (this.plugin.settings.activeSplitTab === 'folder-notes' && this.getCurrentFolderNote()?.path === filePath) {
                     contentEl.empty();
                     contentEl.appendChild(noteContainer);
                 }
@@ -1439,7 +1469,6 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             if ((e.target as HTMLElement).closest('a')) return;
             void this.app.workspace.getLeaf().openFile(targetFile);
         });
-
         contentEl.empty();
         contentEl.appendChild(noteContainer);
     }
