@@ -231,7 +231,9 @@ export class PortalsView extends ItemView {
 
 
         this.registerEvent(this.app.workspace.on('file-open', () => {
-            if (!this.renaming) this.scheduleRender();
+            if (!this.renaming) {
+                this.renderContent();
+            }
         }));
         this.registerEvent(this.app.workspace.on('layout-change', () => {
             if (!this.renaming){
