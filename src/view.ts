@@ -61,6 +61,21 @@ export class PortalsView extends ItemView {
         }
     }
 
+    private getOpenFilePaths(): Set<string> {
+        const openFiles = new Set<string>();
+        const viewTypes = ['markdown', 'canvas', 'image', 'pdf', 'audio', 'video', 'bases', 'fountain', 'excalidraw'];
+        for (const type of viewTypes) {
+            for (const leaf of this.app.workspace.getLeavesOfType(type)) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const file = (leaf.view as any).file;
+                if (file instanceof TFile) {
+                    openFiles.add(file.path);
+                }
+            }
+        }
+        return openFiles;
+    }
+
     private invalidateFolderNoteCache(file: TFile) {
         this.folderNoteCache.delete(file.path);
         const idx = this.folderNoteAccessOrder.indexOf(file.path);
@@ -909,6 +924,7 @@ export class PortalsView extends ItemView {
                 s.type === this.plugin.settings.selectedSpace?.type
             ) || spaces[0];
             if (selectedSpace) {
+                const openFiles = this.getOpenFilePaths();
                 if (selectedSpace.type === 'folder') {
                     const folder = this.app.vault.getAbstractFileByPath(selectedSpace.path);
                     if (folder && folder instanceof TFolder) {
@@ -922,7 +938,7 @@ export class PortalsView extends ItemView {
                         }
                         this.applySpaceBackground(spaceContent, selectedSpace.color);
                         this.makeDropTarget(spaceContent, folder, true);
-                        this.buildFolderTree(folder, spaceContent, selectedSpace.icon, 0, 0, totalFirstLevelFolders);
+                        this.buildFolderTree(folder, spaceContent, openFiles, selectedSpace.icon, 0, 0, totalFirstLevelFolders);
                     } else {
                         treeContainer.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
                     }
@@ -936,7 +952,7 @@ export class PortalsView extends ItemView {
                             spaceContent.style.removeProperty('--space-border-color');
                         }
                     this.applySpaceBackground(spaceContent, selectedSpace.color);
-                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags, 0, 0, groupCount);
+                    this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, openFiles, selectedSpace.groupTags, 0, 0, groupCount);
                 }
             }
 
@@ -1131,6 +1147,7 @@ export class PortalsView extends ItemView {
                 .map(path => this.app.vault.getAbstractFileByPath(path))
                 .filter((file): file is TFile => file instanceof TFile);
 
+            const openFiles = this.getOpenFilePaths();
             for (const file of existingRecentFiles) {
                 const fileEl = contentEl.createDiv({ cls: 'file-item recent-file-item' });
                 const iconSpan = fileEl.createSpan({ cls: 'file-icon' });
@@ -1139,7 +1156,7 @@ export class PortalsView extends ItemView {
                 nameSpan.addClass('portals-item-name');
                 fileEl.dataset.path = file.path;
 
-                const isOpen = this.isFileOpen(file);
+                const isOpen = openFiles.has(file.path);
                 let openDotspan: HTMLSpanElement | null = null;
                 if (isOpen) {
                     openDotspan = fileEl.createSpan({ cls: 'open-dot' });
@@ -1545,6 +1562,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
 
     renderContent() {
+        const openFiles = this.getOpenFilePaths();
         const container = this.containerEl.children[1] as HTMLElement;
         const treeContainer = container.querySelector('.portals-tree-container');
         if (!treeContainer) return;
@@ -1571,7 +1589,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                         }
                 this.applySpaceBackground(spaceContent, selectedSpace.color);
                 this.makeDropTarget(spaceContent, folder, true);
-                this.buildFolderTree(folder, spaceContent, selectedSpace.icon, 0, 0, totalFirstLevelFolders);
+                this.buildFolderTree(folder, spaceContent, openFiles, selectedSpace.icon, 0, 0, totalFirstLevelFolders);
             } else {
                 treeContainer.createEl('p', { text: `Folder not found: ${selectedSpace.path}` });
             }
@@ -1584,7 +1602,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                             spaceContent.style.removeProperty('--space-border-color');
                         }
             this.applySpaceBackground(spaceContent, selectedSpace.color);
-            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, selectedSpace.groupTags, 0, 0, groupCount);
+            this.buildTagSpace(selectedSpace.path, spaceContent, selectedSpace.icon, openFiles, selectedSpace.groupTags, 0, 0, groupCount);
         }
     }
 
@@ -1624,7 +1642,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         return file.name;
     }
 
-    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string, groupTags?: string[], depth: number = 0, index: number = 0, totalGroups: number = 0) {
+    private buildTagSpace(tagName: string, container: HTMLElement, iconName: string, openFiles: Set<string>, groupTags?: string[], depth: number = 0, index: number = 0, totalGroups: number = 0) {
         const tag = '#' + tagName;
         const allFiles = this.app.vault.getMarkdownFiles();
         const taggedFiles = allFiles.filter(file => {
@@ -1671,7 +1689,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
             nameSpan.addClass('portals-item-name');
             fileEl.dataset.path = file.path;
 
-            const isOpen = this.isFileOpen(file);
+            const isOpen = openFiles.has(file.path);
             let openDotSpan: HTMLSpanElement | null = null;
             if (isOpen) {
                 openDotSpan = fileEl.createSpan({ cls: 'open-dot' });
@@ -2049,21 +2067,6 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         }, 200);
     }
 
-    private isFileOpen(file: TFile): boolean {
-        const viewTypes = ['markdown', 'canvas', 'image', 'pdf', 'audio', 'video', 'bases', 'fountain', 'excalidraw'];
-
-        for (const type of viewTypes) {
-            const leaves = this.app.workspace.getLeavesOfType(type);
-            const found = leaves.some(leaf => {
-                const view = leaf.view;
-                // @ts-expect-error - accessing view.file which is not typed
-                return view && view.file && view.file.path === file.path;
-            });
-            if (found) return true;
-        }
-        return false;
-    }
-
     private getActiveFilePath(): string | null {
         const activeFile = this.app.workspace.getActiveFile();
         return activeFile ? activeFile.path : null;
@@ -2271,7 +2274,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
         });
     }
 
-    buildFolderTree(folder: TFolder, container: HTMLElement, iconName: string = 'folder', depth: number = 0, index: number = 0, totalFirstLevelFolders: number = 0) {
+    buildFolderTree(folder: TFolder, container: HTMLElement, openFiles: Set<string>, iconName: string = 'folder', depth: number = 0, index: number = 0, totalFirstLevelFolders: number = 0) {
         const details = container.createEl('details');
         details.addClass('folder-details');
 
@@ -2366,7 +2369,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
 
             for (const child of sorted) {
                 if (child instanceof TFolder) {
-                    this.buildFolderTree(child, childrenContainer, 'folder', depth +1, childIndex, totalFirstLevelFolders);
+                    this.buildFolderTree(child, childrenContainer, openFiles, 'folder', depth +1, childIndex, totalFirstLevelFolders);
                     childIndex++;
                 }   else if (child instanceof TFile) {
                     const isFolderNoteFile = this.isFolderNote(child, folder);
@@ -2380,7 +2383,7 @@ private deleteBookmarkItem(item: BookmarkItem, usePublic: boolean, refresh: () =
                     nameSpan.addClass('portals-item-name');
                     fileEl.dataset.path = child.path;
 
-                    const isOpen = this.isFileOpen(child);
+                    const isOpen = openFiles.has(child.path);
                     let openDotSpan: HTMLSpanElement | null = null;
                     if (isOpen) {
                         openDotSpan = fileEl.createSpan({ cls: 'open-dot' });
