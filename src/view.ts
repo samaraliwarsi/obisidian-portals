@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, Menu, Notice, Platform, Component, debounce } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, Menu, Notice, Platform, Component, debounce, View } from 'obsidian';
 import PortalsPlugin from './main';
 import Sortable, { SortableEvent } from 'sortablejs';
 import { SpaceConfig } from './settings';
@@ -61,15 +61,17 @@ export class PortalsView extends ItemView {
         }
     }
 
+    private isFileView(view: View): view is View & { file: TFile } {
+        return 'file' in view && (view as any).file instanceof TFile;
+    }
+
     private getOpenFilePaths(): Set<string> {
         const openFiles = new Set<string>();
         const viewTypes = ['markdown', 'canvas', 'image', 'pdf', 'audio', 'video', 'bases', 'fountain', 'excalidraw'];
         for (const type of viewTypes) {
             for (const leaf of this.app.workspace.getLeavesOfType(type)) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const file = (leaf.view as any).file;
-                if (file instanceof TFile) {
-                    openFiles.add(file.path);
+                if (this.isFileView(leaf.view)) {
+                    openFiles.add(leaf.view.file.path);
                 }
             }
         }
@@ -232,7 +234,10 @@ export class PortalsView extends ItemView {
             if (!this.renaming) this.scheduleRender();
         }));
         this.registerEvent(this.app.workspace.on('layout-change', () => {
-            if (!this.renaming) this.scheduleRender();
+            if (!this.renaming){
+                this.scheduleRender();
+                this.refreshRecentTab();
+            }
         }));
 
         // Set up bookmarks change listener (using internal plugin for now)

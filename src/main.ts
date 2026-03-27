@@ -183,6 +183,11 @@ export default class PortalsPlugin extends Plugin {
         this.refreshAllRecentTabs();
     }
 
+    private getTags(): Record<string, number> {
+        // @ts-expect-error - getTags is not in the public type definitions
+        return this.app.metadataCache.getTags();
+    }
+
     // ========== MANUAL CLEANUP ==========
     async cleanupDeadSpaces(): Promise<number> {
         // Get all existing folder paths
@@ -190,7 +195,7 @@ export default class PortalsPlugin extends Plugin {
         const existingFolders = allFiles.filter(f => f instanceof TFolder).map(f => f.path);
 
         // Get all existing tags (as strings with '#')
-        const tags = Object.keys((this.app.metadataCache as unknown as { getTags(): Record<string, number> }).getTags());
+        const tags = Object.keys(this.getTags());
         // Filter spaces
         const beforeCount = this.settings.spaces.length;
         this.settings.spaces = this.settings.spaces.filter(space => {
