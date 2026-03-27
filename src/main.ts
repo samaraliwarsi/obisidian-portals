@@ -33,10 +33,9 @@ export default class PortalsPlugin extends Plugin {
 
         // If replaceFileExplorer is enabled, set up the left sidebar
         if (this.settings.replaceFileExplorer) {
-            // Delay a bit to let Obsidian finish initial layout
-            setTimeout(() => {
+            this.app.workspace.onLayoutReady(() => {
                 void this.setupLeftSidebar();
-            }, 200);
+            });
         }
 
         // Track recent files
